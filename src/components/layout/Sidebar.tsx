@@ -1,13 +1,14 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
-import { LayoutDashboard, FileText, CreditCard, User, LogOut, Building2 } from 'lucide-react';
+import { FileText, CreditCard, User, LogOut, Building2, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const navItems = [
   { to: '/deals', label: 'Deals', icon: FileText, roles: ['admin', 'teamleader', 'opener', 'organization'] },
   { to: '/kreditera', label: 'Kreditera', icon: CreditCard, roles: ['organization'] },
   { to: '/minsida', label: 'Min Sida', icon: User, roles: ['admin', 'teamleader', 'opener', 'organization'] },
+  { to: '/admin', label: 'Admin', icon: Settings, roles: ['admin'] },
 ];
 
 export const Sidebar = () => {
