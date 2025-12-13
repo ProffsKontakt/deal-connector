@@ -9,6 +9,7 @@ import Login from "./pages/Login";
 import Deals from "./pages/Deals";
 import Kreditera from "./pages/Kreditera";
 import MinSida from "./pages/MinSida";
+import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -27,6 +28,7 @@ const App = () => (
               <Route path="/deals" element={<Deals />} />
               <Route path="/kreditera" element={<Kreditera />} />
               <Route path="/minsida" element={<MinSida />} />
+              <Route path="/admin" element={<Admin />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

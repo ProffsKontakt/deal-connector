@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { InterestBadge } from '@/components/ui/interest-badge';
+import { CreateDealDialog } from '@/components/deals/CreateDealDialog';
 import { Search, Filter, FileText } from 'lucide-react';
 import { format } from 'date-fns';
 import { sv } from 'date-fns/locale';
@@ -119,9 +120,14 @@ const Deals = () => {
             Hantera och följ upp dina affärer
           </p>
         </div>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <FileText className="w-4 h-4" />
-          <span>{filteredContacts.length} deals</span>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <FileText className="w-4 h-4" />
+            <span>{filteredContacts.length} deals</span>
+          </div>
+          {(profile?.role === 'admin' || profile?.role === 'opener') && (
+            <CreateDealDialog onDealCreated={fetchData} />
+          )}
         </div>
       </div>
 
