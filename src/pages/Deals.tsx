@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { StatusBadge } from '@/components/ui/status-badge';
 import { InterestBadge } from '@/components/ui/interest-badge';
 import { CreateDealDialog } from '@/components/deals/CreateDealDialog';
+import { DealDetailsDialog } from '@/components/deals/DealDetailsDialog';
 import { Search, Filter, FileText } from 'lucide-react';
 import { format } from 'date-fns';
 import { sv } from 'date-fns/locale';
@@ -38,6 +39,8 @@ const Deals = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterOrg, setFilterOrg] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -101,6 +104,11 @@ const Deals = () => {
   const getLatestCreditStatus = (contact: Contact) => {
     if (!contact.credit_requests || contact.credit_requests.length === 0) return null;
     return contact.credit_requests[0].status;
+  };
+
+  const handleContactClick = (contact: Contact) => {
+    setSelectedContact(contact);
+    setDetailsOpen(true);
   };
 
   if (loading) {
@@ -196,7 +204,11 @@ const Deals = () => {
                   filteredContacts.map((contact) => {
                     const creditStatus = getLatestCreditStatus(contact);
                     return (
-                      <TableRow key={contact.id} className="hover:bg-muted/30 transition-colors">
+                      <TableRow 
+                        key={contact.id} 
+                        className="hover:bg-muted/30 transition-colors cursor-pointer"
+                        onClick={() => handleContactClick(contact)}
+                      >
                         <TableCell className="font-medium">{contact.email}</TableCell>
                         <TableCell className="text-muted-foreground">
                           {contact.phone || '-'}
@@ -226,6 +238,13 @@ const Deals = () => {
           </div>
         </CardContent>
       </Card>
+
+      <DealDetailsDialog
+        contact={selectedContact}
+        organizations={organizations}
+        open={detailsOpen}
+        onOpenChange={setDetailsOpen}
+      />
     </div>
   );
 };
