@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { StatusBadge } from '@/components/ui/status-badge';
+import { CreateOrganizationDialog } from '@/components/admin/CreateOrganizationDialog';
 import { toast } from 'sonner';
 import { Building2, Users, CreditCard, Check, X, Save } from 'lucide-react';
 import { format } from 'date-fns';
@@ -186,8 +187,9 @@ const Admin = () => {
 
         <TabsContent value="organizations">
           <Card className="glass-card">
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Organisationer & Priser</CardTitle>
+              <CreateOrganizationDialog onCreated={fetchData} />
             </CardHeader>
             <CardContent>
               <Table>

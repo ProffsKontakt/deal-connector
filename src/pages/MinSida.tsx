@@ -3,9 +3,17 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { StatusBadge } from '@/components/ui/status-badge';
-import { TrendingUp, CreditCard, Calendar, User } from 'lucide-react';
+import { OrganizationDetailsDialog } from '@/components/admin/OrganizationDetailsDialog';
+import { TrendingUp, CreditCard, Calendar, User, Building2 } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { sv } from 'date-fns/locale';
+
+interface Organization {
+  id: string;
+  name: string;
+  price_per_solar_deal: number | null;
+  price_per_battery_deal: number | null;
+}
 
 interface DashboardStats {
   totalValue: number;
@@ -30,6 +38,9 @@ const MinSida = () => {
     pendingCredits: 0,
   });
   const [recentCredits, setRecentCredits] = useState<RecentCredit[]>([]);
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null);
+  const [orgDialogOpen, setOrgDialogOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -47,6 +58,15 @@ const MinSida = () => {
       const thisMonthEnd = endOfMonth(now);
       const lastMonthStart = startOfMonth(subMonths(now, 1));
       const lastMonthEnd = endOfMonth(subMonths(now, 1));
+
+      // Admin: fetch all organizations
+      if (profile.role === 'admin') {
+        const { data: orgs } = await supabase
+          .from('organizations')
+          .select('*')
+          .order('name');
+        setOrganizations(orgs || []);
+      }
 
       // Fetch organization prices if user is organization
       let orgPrices = { price_per_solar_deal: 0, price_per_battery_deal: 0 };
@@ -115,6 +135,11 @@ const MinSida = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleOrgClick = (org: Organization) => {
+    setSelectedOrg(org);
+    setOrgDialogOpen(true);
   };
 
   if (loading) {
@@ -204,6 +229,37 @@ const MinSida = () => {
         </Card>
       </div>
 
+      {/* Admin: Organizations overview */}
+      {profile?.role === 'admin' && organizations.length > 0 && (
+        <Card className="glass-card">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Building2 className="h-5 w-5" />
+              Organisationer
+            </CardTitle>
+            <CardDescription>
+              Klicka på en organisation för att se detaljerad statistik
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+              {organizations.map((org) => (
+                <button
+                  key={org.id}
+                  onClick={() => handleOrgClick(org)}
+                  className="p-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors text-left"
+                >
+                  <p className="font-medium">{org.name}</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Sol: {org.price_per_solar_deal || 0} kr | Batteri: {org.price_per_battery_deal || 0} kr
+                  </p>
+                </button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Card className="glass-card">
         <CardHeader>
           <CardTitle>Senaste kreditförfrågningar</CardTitle>
@@ -236,6 +292,12 @@ const MinSida = () => {
           )}
         </CardContent>
       </Card>
+
+      <OrganizationDetailsDialog
+        organization={selectedOrg}
+        open={orgDialogOpen}
+        onOpenChange={setOrgDialogOpen}
+      />
     </div>
   );
 };
