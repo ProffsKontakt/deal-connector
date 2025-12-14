@@ -244,6 +244,7 @@ const Deals = () => {
         organizations={organizations}
         open={detailsOpen}
         onOpenChange={setDetailsOpen}
+        onDealUpdated={fetchData}
       />
     </div>
   );
