@@ -164,39 +164,41 @@ const MinSida = () => {
         </p>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          title="Totalt värde"
-          value={`${stats.totalValue.toLocaleString('sv-SE')} kr`}
-          subtitle="Baserat på dina deals"
-          icon={TrendingUp}
-          iconColor="text-primary"
-        />
-        <StatCard
-          title="Krediter denna månad"
-          value={stats.creditsThisMonth}
-          subtitle="Godkända krediteringar"
-          icon={CreditCard}
-          iconColor="text-success"
-          valueColor="text-success"
-        />
-        <StatCard
-          title="Krediter förra månaden"
-          value={stats.creditsLastMonth}
-          subtitle={format(subMonths(new Date(), 1), 'MMMM yyyy', { locale: sv })}
-          icon={Calendar}
-          iconColor="text-muted-foreground"
-        />
-        <StatCard
-          title="Väntande"
-          value={stats.pendingCredits}
-          subtitle="Kreditförfrågningar"
-          icon={Clock}
-          iconColor="text-warning"
-          valueColor="text-warning"
-        />
-      </div>
+      {/* Stats Grid - Only show for non-admin users */}
+      {profile?.role !== 'admin' && (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            title="Totalt värde"
+            value={`${stats.totalValue.toLocaleString('sv-SE')} kr`}
+            subtitle="Baserat på dina deals"
+            icon={TrendingUp}
+            iconColor="text-primary"
+          />
+          <StatCard
+            title="Krediter denna månad"
+            value={stats.creditsThisMonth}
+            subtitle="Godkända krediteringar"
+            icon={CreditCard}
+            iconColor="text-success"
+            valueColor="text-success"
+          />
+          <StatCard
+            title="Krediter förra månaden"
+            value={stats.creditsLastMonth}
+            subtitle={format(subMonths(new Date(), 1), 'MMMM yyyy', { locale: sv })}
+            icon={Calendar}
+            iconColor="text-muted-foreground"
+          />
+          <StatCard
+            title="Väntande"
+            value={stats.pendingCredits}
+            subtitle="Kreditförfrågningar"
+            icon={Clock}
+            iconColor="text-warning"
+            valueColor="text-warning"
+          />
+        </div>
+      )}
 
       {/* Admin: Organizations overview */}
       {profile?.role === 'admin' && organizations.length > 0 && (
