@@ -3,8 +3,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { StatusBadge } from '@/components/ui/status-badge';
+import { StatCard } from '@/components/ui/stat-card';
+import { EmptyState } from '@/components/ui/empty-state';
 import { OrganizationDetailsDialog } from '@/components/admin/OrganizationDetailsDialog';
-import { TrendingUp, CreditCard, Calendar, User, Building2 } from 'lucide-react';
+import { TrendingUp, CreditCard, Calendar, Clock, Building2, User, Inbox, ChevronRight } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { sv } from 'date-fns/locale';
 
@@ -59,7 +61,6 @@ const MinSida = () => {
       const lastMonthStart = startOfMonth(subMonths(now, 1));
       const lastMonthEnd = endOfMonth(subMonths(now, 1));
 
-      // Admin: fetch all organizations
       if (profile.role === 'admin') {
         const { data: orgs } = await supabase
           .from('organizations')
@@ -68,7 +69,6 @@ const MinSida = () => {
         setOrganizations(orgs || []);
       }
 
-      // Fetch organization prices if user is organization
       let orgPrices = { price_per_solar_deal: 0, price_per_battery_deal: 0 };
       if (profile.role === 'organization' && profile.organization_id) {
         const { data: org } = await supabase
@@ -84,7 +84,6 @@ const MinSida = () => {
         }
       }
 
-      // Fetch contacts for value calculation (for openers)
       let totalValue = 0;
       if (profile.role === 'opener') {
         const { data: contacts } = await supabase
@@ -93,12 +92,10 @@ const MinSida = () => {
           .eq('opener_id', profile.id);
 
         if (contacts) {
-          // Simple calculation - would need org prices in real scenario
-          totalValue = contacts.length * 1000; // Placeholder value
+          totalValue = contacts.length * 1000;
         }
       }
 
-      // Fetch credit requests
       let creditQuery = supabase
         .from('credit_requests')
         .select('id, status, created_at, contact:contacts(email)');
@@ -111,7 +108,6 @@ const MinSida = () => {
 
       const { data: credits } = await creditQuery.order('created_at', { ascending: false });
 
-      // Calculate stats
       const creditsThisMonth = credits?.filter(c => {
         const date = new Date(c.created_at);
         return date >= thisMonthStart && date <= thisMonthEnd && c.status === 'approved';
@@ -145,98 +141,71 @@ const MinSida = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-pulse text-muted-foreground">Laddar dashboard...</div>
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <span className="text-muted-foreground text-sm">Laddar dashboard...</span>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Min Sida</h1>
-        <p className="text-muted-foreground mt-1">
-          Välkommen tillbaka, {profile?.full_name || profile?.email}
+    <div className="space-y-8 animate-fade-in">
+      {/* Header */}
+      <div className="page-header">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="p-2 rounded-lg bg-primary/10">
+            <User className="w-6 h-6 text-primary" />
+          </div>
+          <h1 className="page-title">Min Sida</h1>
+        </div>
+        <p className="page-description">
+          Välkommen tillbaka, <span className="text-foreground font-medium">{profile?.full_name || profile?.email}</span>
         </p>
       </div>
 
+      {/* Stats Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="glass-card">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Totalt värde
-            </CardTitle>
-            <TrendingUp className="h-4 w-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {stats.totalValue.toLocaleString('sv-SE')} kr
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Baserat på dina deals
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="glass-card">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Krediter denna månad
-            </CardTitle>
-            <CreditCard className="h-4 w-4 text-emerald-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-emerald-400">
-              {stats.creditsThisMonth}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Godkända krediteringar
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="glass-card">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Krediter förra månaden
-            </CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {stats.creditsLastMonth}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {format(subMonths(new Date(), 1), 'MMMM yyyy', { locale: sv })}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="glass-card">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Väntande
-            </CardTitle>
-            <User className="h-4 w-4 text-amber-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-amber-400">
-              {stats.pendingCredits}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Kreditförfrågningar
-            </p>
-          </CardContent>
-        </Card>
+        <StatCard
+          title="Totalt värde"
+          value={`${stats.totalValue.toLocaleString('sv-SE')} kr`}
+          subtitle="Baserat på dina deals"
+          icon={TrendingUp}
+          iconColor="text-primary"
+        />
+        <StatCard
+          title="Krediter denna månad"
+          value={stats.creditsThisMonth}
+          subtitle="Godkända krediteringar"
+          icon={CreditCard}
+          iconColor="text-success"
+          valueColor="text-success"
+        />
+        <StatCard
+          title="Krediter förra månaden"
+          value={stats.creditsLastMonth}
+          subtitle={format(subMonths(new Date(), 1), 'MMMM yyyy', { locale: sv })}
+          icon={Calendar}
+          iconColor="text-muted-foreground"
+        />
+        <StatCard
+          title="Väntande"
+          value={stats.pendingCredits}
+          subtitle="Kreditförfrågningar"
+          icon={Clock}
+          iconColor="text-warning"
+          valueColor="text-warning"
+        />
       </div>
 
       {/* Admin: Organizations overview */}
       {profile?.role === 'admin' && organizations.length > 0 && (
         <Card className="glass-card">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Building2 className="h-5 w-5" />
-              Organisationer
-            </CardTitle>
+            <div className="flex items-center gap-2">
+              <Building2 className="h-5 w-5 text-primary" />
+              <CardTitle>Organisationer</CardTitle>
+            </div>
             <CardDescription>
               Klicka på en organisation för att se detaljerad statistik
             </CardDescription>
@@ -247,11 +216,14 @@ const MinSida = () => {
                 <button
                   key={org.id}
                   onClick={() => handleOrgClick(org)}
-                  className="p-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors text-left"
+                  className="group p-4 rounded-xl bg-muted/30 hover:bg-muted/50 border border-transparent hover:border-primary/20 transition-all duration-200 text-left"
                 >
-                  <p className="font-medium">{org.name}</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Sol: {org.price_per_solar_deal || 0} kr | Batteri: {org.price_per_battery_deal || 0} kr
+                  <div className="flex items-center justify-between">
+                    <p className="font-semibold group-hover:text-primary transition-colors">{org.name}</p>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1.5">
+                    Sol: {org.price_per_solar_deal?.toLocaleString('sv-SE') || 0} kr · Batteri: {org.price_per_battery_deal?.toLocaleString('sv-SE') || 0} kr
                   </p>
                 </button>
               ))}
@@ -260,6 +232,7 @@ const MinSida = () => {
         </Card>
       )}
 
+      {/* Recent Credits */}
       <Card className="glass-card">
         <CardHeader>
           <CardTitle>Senaste kreditförfrågningar</CardTitle>
@@ -269,20 +242,22 @@ const MinSida = () => {
         </CardHeader>
         <CardContent>
           {recentCredits.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">
-              Inga kreditförfrågningar ännu
-            </p>
+            <EmptyState
+              icon={Inbox}
+              title="Inga kreditförfrågningar"
+              description="Du har inte skickat några kreditförfrågningar ännu"
+            />
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {recentCredits.map((credit) => (
                 <div
                   key={credit.id}
-                  className="flex items-center justify-between p-4 rounded-lg bg-muted/30"
+                  className="flex items-center justify-between p-4 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors"
                 >
-                  <div>
-                    <p className="font-medium">{credit.contact?.email}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium truncate">{credit.contact?.email}</p>
                     <p className="text-sm text-muted-foreground">
-                      {format(new Date(credit.created_at), 'dd MMM yyyy HH:mm', { locale: sv })}
+                      {format(new Date(credit.created_at), 'dd MMM yyyy, HH:mm', { locale: sv })}
                     </p>
                   </div>
                   <StatusBadge status={credit.status} />

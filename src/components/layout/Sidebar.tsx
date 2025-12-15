@@ -36,18 +36,20 @@ export const Sidebar = () => {
 
   return (
     <aside className="fixed left-0 top-0 h-screen w-64 bg-sidebar border-r border-sidebar-border flex flex-col">
+      {/* Logo */}
       <div className="p-6 border-b border-sidebar-border">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
             <Building2 className="w-5 h-5 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="font-semibold text-sidebar-foreground">Proffskontakt</h1>
+            <h1 className="font-semibold text-sidebar-foreground tracking-tight">Proffskontakt</h1>
             <p className="text-xs text-muted-foreground">CRM System</p>
           </div>
         </div>
       </div>
 
+      {/* Navigation */}
       <nav className="flex-1 p-4 space-y-1">
         {filteredNav.map((item) => (
           <NavLink
@@ -55,10 +57,10 @@ export const Sidebar = () => {
             to={item.to}
             className={({ isActive }) =>
               cn(
-                'flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200',
+                'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200',
                 isActive
-                  ? 'bg-sidebar-accent text-sidebar-primary'
-                  : 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
+                  ? 'bg-primary text-primary-foreground shadow-md shadow-primary/20'
+                  : 'text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground'
               )
             }
           >
@@ -68,6 +70,7 @@ export const Sidebar = () => {
         ))}
       </nav>
 
+      {/* User Info */}
       <div className="p-4 border-t border-sidebar-border">
         <div className="mb-3 px-4">
           <p className="text-sm font-medium text-sidebar-foreground truncate">
@@ -80,7 +83,7 @@ export const Sidebar = () => {
         <Button
           variant="ghost"
           onClick={handleSignOut}
-          className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+          className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl"
         >
           <LogOut className="w-4 h-4" />
           Logga ut
