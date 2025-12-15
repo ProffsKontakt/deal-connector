@@ -5,7 +5,8 @@ import { Navigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { EmptyState } from '@/components/ui/empty-state';
-import { Users, TrendingUp, Sun, Battery } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Users, TrendingUp, Sun, Battery, Calculator } from 'lucide-react';
 
 interface OpenerStats {
   id: string;
@@ -21,6 +22,7 @@ const Openers = () => {
   const { profile } = useAuth();
   const [openers, setOpeners] = useState<OpenerStats[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'prestanda' | 'siffror'>('prestanda');
 
   useEffect(() => {
     if (profile?.role === 'admin') {
@@ -30,7 +32,6 @@ const Openers = () => {
 
   const fetchOpenerStats = async () => {
     try {
-      // Fetch all openers
       const { data: openerProfiles } = await supabase
         .from('profiles')
         .select('id, email, full_name')
@@ -41,7 +42,6 @@ const Openers = () => {
         return;
       }
 
-      // Fetch all contacts with opener info
       const { data: contacts } = await supabase
         .from('contacts')
         .select('opener_id, interest');
@@ -59,7 +59,6 @@ const Openers = () => {
         };
       });
 
-      // Sort by total deals descending
       openerStats.sort((a, b) => b.totalDeals - a.totalDeals);
       setOpeners(openerStats);
     } finally {
@@ -97,77 +96,159 @@ const Openers = () => {
         </p>
       </div>
 
-      {/* Openers Table */}
-      <Card className="glass-card">
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5 text-primary" />
-            <CardTitle>Opener-statistik</CardTitle>
-          </div>
-          <CardDescription>
-            Antal leads genererade per opener
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {openers.length === 0 ? (
-            <EmptyState
-              icon={Users}
-              title="Inga openers"
-              description="Det finns inga openers registrerade ännu"
-            />
-          ) : (
-            <div className="rounded-xl border border-border overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/50 hover:bg-muted/50">
-                    <TableHead className="font-semibold">Opener</TableHead>
-                    <TableHead className="text-center font-semibold">Totalt</TableHead>
-                    <TableHead className="text-center font-semibold">
-                      <div className="flex items-center justify-center gap-1">
-                        <Sun className="w-4 h-4 text-amber-500" />
-                        Sol
-                      </div>
-                    </TableHead>
-                    <TableHead className="text-center font-semibold">
-                      <div className="flex items-center justify-center gap-1">
-                        <Battery className="w-4 h-4 text-emerald-500" />
-                        Batteri
-                      </div>
-                    </TableHead>
-                    <TableHead className="text-center font-semibold">
-                      <div className="flex items-center justify-center gap-1">
-                        <Sun className="w-4 h-4 text-amber-500" />
-                        +
-                        <Battery className="w-4 h-4 text-emerald-500" />
-                      </div>
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {openers.map((opener) => (
-                    <TableRow key={opener.id} className="hover:bg-muted/30">
-                      <TableCell>
-                        <div>
-                          <p className="font-medium">{opener.full_name || opener.email}</p>
-                          {opener.full_name && (
-                            <p className="text-sm text-muted-foreground">{opener.email}</p>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <span className="font-semibold text-primary">{opener.totalDeals}</span>
-                      </TableCell>
-                      <TableCell className="text-center">{opener.solarDeals}</TableCell>
-                      <TableCell className="text-center">{opener.batteryDeals}</TableCell>
-                      <TableCell className="text-center">{opener.sunBatteryDeals}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+      {/* Tab Buttons */}
+      <div className="flex gap-2">
+        <Button
+          variant={activeTab === 'prestanda' ? 'default' : 'outline'}
+          onClick={() => setActiveTab('prestanda')}
+          className="gap-2"
+        >
+          <TrendingUp className="w-4 h-4" />
+          Prestanda
+        </Button>
+        <Button
+          variant={activeTab === 'siffror' ? 'default' : 'outline'}
+          onClick={() => setActiveTab('siffror')}
+          className="gap-2"
+        >
+          <Calculator className="w-4 h-4" />
+          Siffror
+        </Button>
+      </div>
+
+      {/* Prestanda Tab */}
+      {activeTab === 'prestanda' && (
+        <Card className="glass-card">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-primary" />
+              <CardTitle>Opener-statistik</CardTitle>
             </div>
-          )}
-        </CardContent>
-      </Card>
+            <CardDescription>
+              Antal leads genererade per opener
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {openers.length === 0 ? (
+              <EmptyState
+                icon={Users}
+                title="Inga openers"
+                description="Det finns inga openers registrerade ännu"
+              />
+            ) : (
+              <div className="rounded-xl border border-border overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50 hover:bg-muted/50">
+                      <TableHead className="font-semibold">Opener</TableHead>
+                      <TableHead className="text-center font-semibold">Totalt</TableHead>
+                      <TableHead className="text-center font-semibold">
+                        <div className="flex items-center justify-center gap-1">
+                          <Sun className="w-4 h-4 text-amber-500" />
+                          Sol
+                        </div>
+                      </TableHead>
+                      <TableHead className="text-center font-semibold">
+                        <div className="flex items-center justify-center gap-1">
+                          <Battery className="w-4 h-4 text-emerald-500" />
+                          Batteri
+                        </div>
+                      </TableHead>
+                      <TableHead className="text-center font-semibold">
+                        <div className="flex items-center justify-center gap-1">
+                          <Sun className="w-4 h-4 text-amber-500" />
+                          +
+                          <Battery className="w-4 h-4 text-emerald-500" />
+                        </div>
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {openers.map((opener) => (
+                      <TableRow key={opener.id} className="hover:bg-muted/30">
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{opener.full_name || opener.email}</p>
+                            {opener.full_name && (
+                              <p className="text-sm text-muted-foreground">{opener.email}</p>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <span className="font-semibold text-primary">{opener.totalDeals}</span>
+                        </TableCell>
+                        <TableCell className="text-center">{opener.solarDeals}</TableCell>
+                        <TableCell className="text-center">{opener.batteryDeals}</TableCell>
+                        <TableCell className="text-center">{opener.sunBatteryDeals}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Siffror Tab */}
+      {activeTab === 'siffror' && (
+        <Card className="glass-card">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Calculator className="h-5 w-5 text-primary" />
+              <CardTitle>Provisioner</CardTitle>
+            </div>
+            <CardDescription>
+              Provisioner för säljare och openers
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {openers.length === 0 ? (
+              <EmptyState
+                icon={Calculator}
+                title="Inga provisioner"
+                description="Det finns inga provisioner att visa ännu"
+              />
+            ) : (
+              <div className="rounded-xl border border-border overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50 hover:bg-muted/50">
+                      <TableHead className="font-semibold">Namn</TableHead>
+                      <TableHead className="text-center font-semibold">Antal deals</TableHead>
+                      <TableHead className="text-center font-semibold">Provision</TableHead>
+                      <TableHead className="text-center font-semibold">Totalt (kr)</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {openers.map((opener) => (
+                      <TableRow key={opener.id} className="hover:bg-muted/30">
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{opener.full_name || opener.email}</p>
+                            {opener.full_name && (
+                              <p className="text-sm text-muted-foreground">{opener.email}</p>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <span className="font-semibold">{opener.totalDeals}</span>
+                        </TableCell>
+                        <TableCell className="text-center text-muted-foreground">
+                          —
+                        </TableCell>
+                        <TableCell className="text-center font-semibold text-primary">
+                          —
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };
