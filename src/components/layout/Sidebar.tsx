@@ -1,7 +1,8 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from 'next-themes';
 import { cn } from '@/lib/utils';
-import { FileText, CreditCard, User, LogOut, Building2, Settings } from 'lucide-react';
+import { FileText, CreditCard, User, LogOut, Building2, Settings, Sun, Moon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const navItems = [
@@ -13,11 +14,16 @@ const navItems = [
 
 export const Sidebar = () => {
   const { profile, signOut } = useAuth();
+  const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
 
   const handleSignOut = async () => {
     await signOut();
     navigate('/login');
+  };
+
+  const toggleTheme = () => {
+    setTheme(theme === 'dark' ? 'light' : 'dark');
   };
 
   const filteredNav = navItems.filter(item => 
@@ -38,14 +44,26 @@ export const Sidebar = () => {
     <aside className="fixed left-0 top-0 h-screen w-64 bg-sidebar border-r border-sidebar-border flex flex-col">
       {/* Logo */}
       <div className="p-6 border-b border-sidebar-border">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
-            <Building2 className="w-5 h-5 text-primary-foreground" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
+              <Building2 className="w-5 h-5 text-primary-foreground" />
+            </div>
+            <div>
+              <h1 className="font-semibold text-sidebar-foreground tracking-tight">Proffskontakt</h1>
+              <p className="text-xs text-muted-foreground">CRM System</p>
+            </div>
           </div>
-          <div>
-            <h1 className="font-semibold text-sidebar-foreground tracking-tight">Proffskontakt</h1>
-            <p className="text-xs text-muted-foreground">CRM System</p>
-          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleTheme}
+            className="h-9 w-9 rounded-lg text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent"
+          >
+            <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+            <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+            <span className="sr-only">Toggle theme</span>
+          </Button>
         </div>
       </div>
 
