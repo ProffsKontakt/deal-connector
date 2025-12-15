@@ -7,9 +7,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { InterestBadge } from '@/components/ui/interest-badge';
+import { EmptyState } from '@/components/ui/empty-state';
 import { CreateDealDialog } from '@/components/deals/CreateDealDialog';
 import { DealDetailsDialog } from '@/components/deals/DealDetailsDialog';
-import { Search, Filter, FileText } from 'lucide-react';
+import { Search, Filter, FileText, TrendingUp } from 'lucide-react';
 import { format } from 'date-fns';
 import { sv } from 'date-fns/locale';
 
@@ -50,13 +51,11 @@ const Deals = () => {
     if (!profile) return;
 
     try {
-      // Fetch organizations
       const { data: orgsData } = await supabase
         .from('organizations')
         .select('id, name');
       setOrganizations(orgsData || []);
 
-      // Fetch contacts based on role
       let query = supabase
         .from('contacts')
         .select(`
@@ -74,7 +73,6 @@ const Deals = () => {
         return;
       }
 
-      // Transform data
       const transformed = (data || []).map((c: any) => ({
         ...c,
         organizations: c.contact_organizations?.map((co: any) => co.organization) || [],
@@ -114,24 +112,34 @@ const Deals = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-pulse text-muted-foreground">Laddar deals...</div>
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <span className="text-muted-foreground text-sm">Laddar deals...</span>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Deals</h1>
-          <p className="text-muted-foreground mt-1">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="page-header mb-0">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <TrendingUp className="w-6 h-6 text-primary" />
+            </div>
+            <h1 className="page-title">Deals</h1>
+          </div>
+          <p className="page-description">
             Hantera och följ upp dina affärer
           </p>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/50 text-sm text-muted-foreground">
             <FileText className="w-4 h-4" />
-            <span>{filteredContacts.length} deals</span>
+            <span className="font-medium">{filteredContacts.length}</span>
+            <span>deals</span>
           </div>
           {(profile?.role === 'admin' || profile?.role === 'opener') && (
             <CreateDealDialog onDealCreated={fetchData} />
@@ -139,22 +147,23 @@ const Deals = () => {
         </div>
       </div>
 
+      {/* Filters */}
       <Card className="glass-card">
         <CardHeader className="pb-4">
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col lg:flex-row gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 placeholder="Sök på e-post, telefon eller adress..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
+                className="pl-10 h-11"
               />
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-3">
               <Select value={filterOrg} onValueChange={setFilterOrg}>
-                <SelectTrigger className="w-48">
-                  <Filter className="w-4 h-4 mr-2" />
+                <SelectTrigger className="w-52 h-11">
+                  <Filter className="w-4 h-4 mr-2 text-muted-foreground" />
                   <SelectValue placeholder="Organisation" />
                 </SelectTrigger>
                 <SelectContent>
@@ -167,7 +176,7 @@ const Deals = () => {
                 </SelectContent>
               </Select>
               <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-40">
+                <SelectTrigger className="w-44 h-11">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -181,37 +190,41 @@ const Deals = () => {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="rounded-lg border border-border overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/50">
-                  <TableHead>E-post</TableHead>
-                  <TableHead>Telefon</TableHead>
-                  <TableHead>Intresse</TableHead>
-                  <TableHead>Datum</TableHead>
-                  <TableHead>Opener</TableHead>
-                  <TableHead>Kredit Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredContacts.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                      Inga deals hittades
-                    </TableCell>
+          {filteredContacts.length === 0 ? (
+            <EmptyState
+              icon={FileText}
+              title="Inga deals hittades"
+              description={searchTerm || filterOrg !== 'all' || filterStatus !== 'all' 
+                ? "Prova att justera dina filter för att hitta det du söker"
+                : "Det finns inga deals att visa ännu"}
+            />
+          ) : (
+            <div className="rounded-xl border border-border overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/30 hover:bg-muted/30">
+                    <TableHead className="font-semibold">E-post</TableHead>
+                    <TableHead className="font-semibold">Telefon</TableHead>
+                    <TableHead className="font-semibold">Intresse</TableHead>
+                    <TableHead className="font-semibold">Datum</TableHead>
+                    <TableHead className="font-semibold">Opener</TableHead>
+                    <TableHead className="font-semibold">Kredit Status</TableHead>
                   </TableRow>
-                ) : (
-                  filteredContacts.map((contact) => {
+                </TableHeader>
+                <TableBody>
+                  {filteredContacts.map((contact) => {
                     const creditStatus = getLatestCreditStatus(contact);
                     return (
                       <TableRow 
                         key={contact.id} 
-                        className="hover:bg-muted/30 transition-colors cursor-pointer"
+                        className="cursor-pointer transition-colors hover:bg-muted/50 group"
                         onClick={() => handleContactClick(contact)}
                       >
-                        <TableCell className="font-medium">{contact.email}</TableCell>
+                        <TableCell className="font-medium group-hover:text-primary transition-colors">
+                          {contact.email}
+                        </TableCell>
                         <TableCell className="text-muted-foreground">
-                          {contact.phone || '-'}
+                          {contact.phone || '–'}
                         </TableCell>
                         <TableCell>
                           <InterestBadge interest={contact.interest} />
@@ -220,22 +233,22 @@ const Deals = () => {
                           {format(new Date(contact.date_sent), 'dd MMM yyyy', { locale: sv })}
                         </TableCell>
                         <TableCell className="text-muted-foreground">
-                          {contact.opener?.full_name || contact.opener?.email || '-'}
+                          {contact.opener?.full_name || contact.opener?.email || '–'}
                         </TableCell>
                         <TableCell>
                           {creditStatus ? (
                             <StatusBadge status={creditStatus} />
                           ) : (
-                            <span className="text-muted-foreground text-sm">-</span>
+                            <span className="text-muted-foreground text-sm">–</span>
                           )}
                         </TableCell>
                       </TableRow>
                     );
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
 

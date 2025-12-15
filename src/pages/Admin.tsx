@@ -1,16 +1,17 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { StatusBadge } from '@/components/ui/status-badge';
+import { EmptyState } from '@/components/ui/empty-state';
 import { CreateOrganizationDialog } from '@/components/admin/CreateOrganizationDialog';
 import { toast } from 'sonner';
-import { Building2, Users, CreditCard, Check, X, Save } from 'lucide-react';
+import { Building2, Users, CreditCard, Check, X, Save, Settings, Inbox } from 'lucide-react';
 import { format } from 'date-fns';
 import { sv } from 'date-fns/locale';
 import { Navigate } from 'react-router-dom';
@@ -103,11 +104,11 @@ const Admin = () => {
       .eq('id', orgId);
 
     if (error) {
-      toast.error('Kunde inte spara priser');
+      toast.error('⚠️ Kunde inte spara priser');
       return;
     }
     
-    toast.success('Priser uppdaterade');
+    toast.success('🎉 Priser uppdaterade');
     setEditingOrg(null);
     fetchData();
   };
@@ -119,17 +120,16 @@ const Admin = () => {
       .eq('id', userId);
 
     if (error) {
-      toast.error('Kunde inte ändra roll');
+      toast.error('⚠️ Kunde inte ändra roll');
       return;
     }
 
-    // Also update user_roles table
     await supabase
       .from('user_roles')
       .update({ role: newRole })
       .eq('user_id', userId);
 
-    toast.success('Roll uppdaterad');
+    toast.success('🎉 Roll uppdaterad');
     fetchData();
   };
 
@@ -140,11 +140,11 @@ const Admin = () => {
       .eq('id', requestId);
 
     if (error) {
-      toast.error('Kunde inte uppdatera kreditbegäran');
+      toast.error('⚠️ Kunde inte uppdatera kreditbegäran');
       return;
     }
 
-    toast.success(status === 'approved' ? 'Kredit godkänd' : 'Kredit nekad');
+    toast.success(status === 'approved' ? '🎉 Kredit godkänd' : '✓ Kredit nekad');
     fetchData();
   };
 
@@ -155,234 +155,270 @@ const Admin = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-pulse text-muted-foreground">Laddar admin...</div>
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <span className="text-muted-foreground text-sm">Laddar admin...</span>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Admin Panel</h1>
-        <p className="text-muted-foreground mt-1">
+    <div className="space-y-8 animate-fade-in">
+      <div className="page-header">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="p-2 rounded-lg bg-primary/10">
+            <Settings className="w-6 h-6 text-primary" />
+          </div>
+          <h1 className="page-title">Admin Panel</h1>
+        </div>
+        <p className="page-description">
           Hantera organisationer, användare och kreditbegäranden
         </p>
       </div>
 
       <Tabs defaultValue="organizations" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 max-w-lg">
-          <TabsTrigger value="organizations" className="gap-2">
+        <TabsList className="grid w-full grid-cols-3 max-w-lg bg-muted/50 p-1">
+          <TabsTrigger value="organizations" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
             <Building2 className="w-4 h-4" />
-            Organisationer
+            <span className="hidden sm:inline">Organisationer</span>
           </TabsTrigger>
-          <TabsTrigger value="users" className="gap-2">
+          <TabsTrigger value="users" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
             <Users className="w-4 h-4" />
-            Användare
+            <span className="hidden sm:inline">Användare</span>
           </TabsTrigger>
-          <TabsTrigger value="credits" className="gap-2">
+          <TabsTrigger value="credits" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
             <CreditCard className="w-4 h-4" />
-            Krediter
+            <span className="hidden sm:inline">Krediter</span>
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="organizations">
+        <TabsContent value="organizations" className="animate-fade-in">
           <Card className="glass-card">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Organisationer & Priser</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between pb-4">
+              <div>
+                <CardTitle className="text-xl">Organisationer & Priser</CardTitle>
+                <CardDescription>Hantera organisationer och deras prissättning</CardDescription>
+              </div>
               <CreateOrganizationDialog onCreated={fetchData} />
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    <TableHead>Namn</TableHead>
-                    <TableHead>Pris per Sol-deal</TableHead>
-                    <TableHead>Pris per Batteri-deal</TableHead>
-                    <TableHead className="w-24">Åtgärder</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {organizations.map((org) => (
-                    <TableRow key={org.id}>
-                      <TableCell className="font-medium">{org.name}</TableCell>
-                      <TableCell>
-                        {editingOrg === org.id ? (
-                          <Input
-                            type="number"
-                            value={orgPrices[org.id]?.solar || ''}
-                            onChange={(e) => setOrgPrices(prev => ({
-                              ...prev,
-                              [org.id]: { ...prev[org.id], solar: e.target.value }
-                            }))}
-                            className="w-32"
-                            placeholder="0"
-                          />
-                        ) : (
-                          <span className="text-muted-foreground">
-                            {org.price_per_solar_deal ? `${org.price_per_solar_deal} kr` : '-'}
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {editingOrg === org.id ? (
-                          <Input
-                            type="number"
-                            value={orgPrices[org.id]?.battery || ''}
-                            onChange={(e) => setOrgPrices(prev => ({
-                              ...prev,
-                              [org.id]: { ...prev[org.id], battery: e.target.value }
-                            }))}
-                            className="w-32"
-                            placeholder="0"
-                          />
-                        ) : (
-                          <span className="text-muted-foreground">
-                            {org.price_per_battery_deal ? `${org.price_per_battery_deal} kr` : '-'}
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {editingOrg === org.id ? (
-                          <Button
-                            size="sm"
-                            onClick={() => handleSaveOrgPrices(org.id)}
-                            className="gap-1"
-                          >
-                            <Save className="w-3 h-3" />
-                            Spara
-                          </Button>
-                        ) : (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setEditingOrg(org.id)}
-                          >
-                            Redigera
-                          </Button>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="users">
-          <Card className="glass-card">
-            <CardHeader>
-              <CardTitle>Användare & Roller</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    <TableHead>E-post</TableHead>
-                    <TableHead>Namn</TableHead>
-                    <TableHead>Roll</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {profiles.map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell className="font-medium">{user.email}</TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {user.full_name || '-'}
-                      </TableCell>
-                      <TableCell>
-                        <Select
-                          value={user.role}
-                          onValueChange={(value: UserRole) => handleRoleChange(user.id, value)}
-                        >
-                          <SelectTrigger className="w-40">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="admin">Admin</SelectItem>
-                            <SelectItem value="teamleader">Teamleader</SelectItem>
-                            <SelectItem value="opener">Opener</SelectItem>
-                            <SelectItem value="organization">Organization</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="credits">
-          <Card className="glass-card">
-            <CardHeader>
-              <CardTitle>Kreditbegäranden</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    <TableHead>Kontakt</TableHead>
-                    <TableHead>Organisation</TableHead>
-                    <TableHead>Anledning</TableHead>
-                    <TableHead>Datum</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="w-32">Åtgärder</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {creditRequests.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                        Inga kreditbegäranden
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    creditRequests.map((request) => (
-                      <TableRow key={request.id}>
-                        <TableCell className="font-medium">
-                          {request.contact?.email || '-'}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {request.organization?.name || '-'}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground max-w-xs truncate">
-                          {request.reason || '-'}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {format(new Date(request.created_at), 'dd MMM yyyy', { locale: sv })}
-                        </TableCell>
-                        <TableCell>
-                          <StatusBadge status={request.status} />
-                        </TableCell>
-                        <TableCell>
-                          {request.status === 'pending' && (
-                            <div className="flex gap-1">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="text-status-approved hover:bg-status-approved/10"
-                                onClick={() => handleCreditAction(request.id, 'approved')}
-                              >
-                                <Check className="w-3 h-3" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="text-status-denied hover:bg-status-denied/10"
-                                onClick={() => handleCreditAction(request.id, 'denied')}
-                              >
-                                <X className="w-3 h-3" />
-                              </Button>
-                            </div>
-                          )}
-                        </TableCell>
+              {organizations.length === 0 ? (
+                <EmptyState
+                  icon={Building2}
+                  title="Inga organisationer"
+                  description="Skapa din första organisation för att komma igång"
+                />
+              ) : (
+                <div className="rounded-xl border border-border overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/30 hover:bg-muted/30">
+                        <TableHead className="font-semibold">Namn</TableHead>
+                        <TableHead className="font-semibold">Pris per Sol-deal</TableHead>
+                        <TableHead className="font-semibold">Pris per Batteri-deal</TableHead>
+                        <TableHead className="w-28 font-semibold">Åtgärder</TableHead>
                       </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {organizations.map((org) => (
+                        <TableRow key={org.id} className="group">
+                          <TableCell className="font-medium">{org.name}</TableCell>
+                          <TableCell>
+                            {editingOrg === org.id ? (
+                              <Input
+                                type="number"
+                                value={orgPrices[org.id]?.solar || ''}
+                                onChange={(e) => setOrgPrices(prev => ({
+                                  ...prev,
+                                  [org.id]: { ...prev[org.id], solar: e.target.value }
+                                }))}
+                                className="w-32 h-9"
+                                placeholder="0"
+                              />
+                            ) : (
+                              <span className="text-muted-foreground">
+                                {org.price_per_solar_deal ? `${org.price_per_solar_deal.toLocaleString('sv-SE')} kr` : '–'}
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {editingOrg === org.id ? (
+                              <Input
+                                type="number"
+                                value={orgPrices[org.id]?.battery || ''}
+                                onChange={(e) => setOrgPrices(prev => ({
+                                  ...prev,
+                                  [org.id]: { ...prev[org.id], battery: e.target.value }
+                                }))}
+                                className="w-32 h-9"
+                                placeholder="0"
+                              />
+                            ) : (
+                              <span className="text-muted-foreground">
+                                {org.price_per_battery_deal ? `${org.price_per_battery_deal.toLocaleString('sv-SE')} kr` : '–'}
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {editingOrg === org.id ? (
+                              <Button
+                                size="sm"
+                                onClick={() => handleSaveOrgPrices(org.id)}
+                                className="gap-1.5"
+                              >
+                                <Save className="w-3.5 h-3.5" />
+                                Spara
+                              </Button>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setEditingOrg(org.id)}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                Redigera
+                              </Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="users" className="animate-fade-in">
+          <Card className="glass-card">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-xl">Användare & Roller</CardTitle>
+              <CardDescription>Hantera användarkonton och behörigheter</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {profiles.length === 0 ? (
+                <EmptyState
+                  icon={Users}
+                  title="Inga användare"
+                  description="Inga användare har registrerats ännu"
+                />
+              ) : (
+                <div className="rounded-xl border border-border overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/30 hover:bg-muted/30">
+                        <TableHead className="font-semibold">E-post</TableHead>
+                        <TableHead className="font-semibold">Namn</TableHead>
+                        <TableHead className="font-semibold">Roll</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {profiles.map((user) => (
+                        <TableRow key={user.id}>
+                          <TableCell className="font-medium">{user.email}</TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {user.full_name || '–'}
+                          </TableCell>
+                          <TableCell>
+                            <Select
+                              value={user.role}
+                              onValueChange={(value: UserRole) => handleRoleChange(user.id, value)}
+                            >
+                              <SelectTrigger className="w-44 h-9">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="admin">Admin</SelectItem>
+                                <SelectItem value="teamleader">Teamleader</SelectItem>
+                                <SelectItem value="opener">Opener</SelectItem>
+                                <SelectItem value="organization">Organization</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="credits" className="animate-fade-in">
+          <Card className="glass-card">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-xl">Kreditbegäranden</CardTitle>
+              <CardDescription>Granska och hantera inkomna kreditförfrågningar</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {creditRequests.length === 0 ? (
+                <EmptyState
+                  icon={Inbox}
+                  title="Inga kreditbegäranden"
+                  description="Det finns inga kreditförfrågningar att hantera just nu"
+                />
+              ) : (
+                <div className="rounded-xl border border-border overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/30 hover:bg-muted/30">
+                        <TableHead className="font-semibold">Kontakt</TableHead>
+                        <TableHead className="font-semibold">Organisation</TableHead>
+                        <TableHead className="font-semibold">Anledning</TableHead>
+                        <TableHead className="font-semibold">Datum</TableHead>
+                        <TableHead className="font-semibold">Status</TableHead>
+                        <TableHead className="w-28 font-semibold">Åtgärder</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {creditRequests.map((request) => (
+                        <TableRow key={request.id}>
+                          <TableCell className="font-medium">
+                            {request.contact?.email || '–'}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {request.organization?.name || '–'}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground max-w-xs truncate">
+                            {request.reason || '–'}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {format(new Date(request.created_at), 'dd MMM yyyy', { locale: sv })}
+                          </TableCell>
+                          <TableCell>
+                            <StatusBadge status={request.status} />
+                          </TableCell>
+                          <TableCell>
+                            {request.status === 'pending' && (
+                              <div className="flex gap-1.5">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-8 w-8 p-0 text-success hover:bg-success/10 hover:text-success hover:border-success/30"
+                                  onClick={() => handleCreditAction(request.id, 'approved')}
+                                >
+                                  <Check className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30"
+                                  onClick={() => handleCreditAction(request.id, 'denied')}
+                                >
+                                  <X className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
