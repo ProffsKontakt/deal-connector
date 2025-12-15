@@ -11,6 +11,8 @@ import Deals from "./pages/Deals";
 import Kreditera from "./pages/Kreditera";
 import MinSida from "./pages/MinSida";
 import Admin from "./pages/Admin";
+import Openers from "./pages/Openers";
+import Partners from "./pages/Partners";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,6 +33,8 @@ const App = () => (
                 <Route path="/kreditera" element={<Kreditera />} />
                 <Route path="/minsida" element={<MinSida />} />
                 <Route path="/admin" element={<Admin />} />
+                <Route path="/openers" element={<Openers />} />
+                <Route path="/partners" element={<Partners />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
