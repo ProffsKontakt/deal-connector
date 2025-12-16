@@ -31,10 +31,10 @@ const App = () => (
               <Route element={<AppLayout />}>
                 <Route path="/deals" element={<Deals />} />
                 <Route path="/kreditera" element={<Kreditera />} />
-                <Route path="/minsida" element={<MinSida />} />
                 <Route path="/admin" element={<Admin />} />
                 <Route path="/openers" element={<Openers />} />
                 <Route path="/partners" element={<Partners />} />
+                <Route path="/minsida" element={<MinSida />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
