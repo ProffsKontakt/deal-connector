@@ -1,17 +1,17 @@
-import { NavLink, useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { useTheme } from 'next-themes';
-import { cn } from '@/lib/utils';
-import { FileText, CreditCard, User, LogOut, Building2, Settings, Sun, Moon, Users, Handshake } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { NavLink, useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "next-themes";
+import { cn } from "@/lib/utils";
+import { FileText, CreditCard, User, LogOut, Building2, Settings, Sun, Moon, Users, Handshake } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const navItems = [
-  { to: '/deals', label: 'Deals', icon: FileText, roles: ['admin', 'teamleader', 'opener', 'organization'] },
-  { to: '/kreditera', label: 'Kreditera', icon: CreditCard, roles: ['organization'] },
-  { to: '/minsida', label: 'Min Sida', icon: User, roles: ['admin', 'teamleader', 'opener', 'organization'] },
-  { to: '/openers', label: 'Openers', icon: Users, roles: ['admin'] },
-  { to: '/partners', label: 'Partners', icon: Handshake, roles: ['admin'] },
-  { to: '/admin', label: 'Admin', icon: Settings, roles: ['admin'] },
+  { to: "/deals", label: "Deals", icon: FileText, roles: ["admin", "teamleader", "opener", "organization"] },
+  { to: "/kreditera", label: "Kreditera", icon: CreditCard, roles: ["organization"] },
+  { to: "/openers", label: "Openers", icon: Users, roles: ["admin"] },
+  { to: "/partners", label: "Partners", icon: Handshake, roles: ["admin"] },
+  { to: "/admin", label: "Admin", icon: Settings, roles: ["admin"] },
+  { to: "/minsida", label: "Min Sida", icon: User, roles: ["admin", "teamleader", "opener", "organization"] },
 ];
 
 export const Sidebar = () => {
@@ -21,23 +21,21 @@ export const Sidebar = () => {
 
   const handleSignOut = async () => {
     await signOut();
-    navigate('/login');
+    navigate("/login");
   };
 
   const toggleTheme = () => {
-    setTheme(theme === 'dark' ? 'light' : 'dark');
+    setTheme(theme === "dark" ? "light" : "dark");
   };
 
-  const filteredNav = navItems.filter(item => 
-    profile?.role && item.roles.includes(profile.role)
-  );
+  const filteredNav = navItems.filter((item) => profile?.role && item.roles.includes(profile.role));
 
   const getRoleLabel = (role: string) => {
     const labels: Record<string, string> = {
-      admin: 'Administrator',
-      teamleader: 'Teamleader',
-      opener: 'Opener',
-      organization: 'Organization'
+      admin: "Administrator",
+      teamleader: "Teamleader",
+      opener: "Opener",
+      organization: "Organization",
     };
     return labels[role] || role;
   };
@@ -77,10 +75,10 @@ export const Sidebar = () => {
             to={item.to}
             className={({ isActive }) =>
               cn(
-                'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200',
+                "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200",
                 isActive
-                  ? 'bg-primary text-primary-foreground shadow-md shadow-primary/20'
-                  : 'text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground'
+                  ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
+                  : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground",
               )
             }
           >
@@ -93,12 +91,8 @@ export const Sidebar = () => {
       {/* User Info */}
       <div className="p-4 border-t border-sidebar-border">
         <div className="mb-3 px-4">
-          <p className="text-sm font-medium text-sidebar-foreground truncate">
-            {profile?.email}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {profile?.role && getRoleLabel(profile.role)}
-          </p>
+          <p className="text-sm font-medium text-sidebar-foreground truncate">{profile?.email}</p>
+          <p className="text-xs text-muted-foreground">{profile?.role && getRoleLabel(profile.role)}</p>
         </div>
         <Button
           variant="ghost"
