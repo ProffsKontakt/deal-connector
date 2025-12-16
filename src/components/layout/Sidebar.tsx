@@ -35,7 +35,7 @@ export const Sidebar = () => {
       admin: "Administrator",
       teamleader: "Teamleader",
       opener: "Opener",
-      organization: "Organization",
+      organization: "Partner",
     };
     return labels[role] || role;
   };

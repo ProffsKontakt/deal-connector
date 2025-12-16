@@ -15,6 +15,8 @@ interface PartnerStats {
   batteryLeads: number;
   sunBatteryLeads: number;
   totalValue: number;
+  requestedCredits: number;
+  approvedCredits: number;
 }
 
 const Partners = () => {
@@ -45,8 +47,14 @@ const Partners = () => {
         .from('contact_organizations')
         .select('organization_id, contact:contacts(interest)');
 
+      // Fetch credit requests per organization
+      const { data: creditRequests } = await supabase
+        .from('credit_requests')
+        .select('organization_id, status');
+
       const partnerStats: PartnerStats[] = organizations.map((org) => {
         const orgContacts = contactOrgs?.filter(co => co.organization_id === org.id) || [];
+        const orgCredits = creditRequests?.filter(cr => cr.organization_id === org.id) || [];
         
         const solarLeads = orgContacts.filter(co => co.contact?.interest === 'sun').length;
         const batteryLeads = orgContacts.filter(co => co.contact?.interest === 'battery').length;
@@ -57,6 +65,10 @@ const Partners = () => {
         const batteryPrice = org.price_per_battery_deal || 0;
         const totalValue = (solarLeads * solarPrice) + (batteryLeads * batteryPrice) + (sunBatteryLeads * (solarPrice + batteryPrice));
 
+        // Count credit requests
+        const requestedCredits = orgCredits.length;
+        const approvedCredits = orgCredits.filter(cr => cr.status === 'approved').length;
+
         return {
           id: org.id,
           name: org.name,
@@ -65,6 +77,8 @@ const Partners = () => {
           batteryLeads,
           sunBatteryLeads,
           totalValue,
+          requestedCredits,
+          approvedCredits,
         };
       });
 
@@ -151,6 +165,8 @@ const Partners = () => {
                       </div>
                     </TableHead>
                     <TableHead className="text-right font-semibold">Värde</TableHead>
+                    <TableHead className="text-center font-semibold">Önskade krediter</TableHead>
+                    <TableHead className="text-center font-semibold">Godkända krediter</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -169,6 +185,12 @@ const Partners = () => {
                         <span className="font-semibold text-success">
                           {partner.totalValue.toLocaleString('sv-SE')} kr
                         </span>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <span className="font-medium text-amber-600">{partner.requestedCredits}</span>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <span className="font-medium text-emerald-600">{partner.approvedCredits}</span>
                       </TableCell>
                     </TableRow>
                   ))}

@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { EmptyState } from '@/components/ui/empty-state';
 import { CreateOrganizationDialog } from '@/components/admin/CreateOrganizationDialog';
+import { AddUserDialog } from '@/components/admin/AddUserDialog';
 import { toast } from 'sonner';
 import { Building2, Users, CreditCard, Check, X, Save, Settings, Inbox } from 'lucide-react';
 import { format } from 'date-fns';
@@ -293,9 +294,12 @@ const Admin = () => {
 
         <TabsContent value="users" className="animate-fade-in">
           <Card className="glass-card">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-xl">Användare & Roller</CardTitle>
-              <CardDescription>Hantera användarkonton och behörigheter</CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between pb-4">
+              <div>
+                <CardTitle className="text-xl">Användare & Roller</CardTitle>
+                <CardDescription>Hantera användarkonton och behörigheter</CardDescription>
+              </div>
+              <AddUserDialog onCreated={fetchData} />
             </CardHeader>
             <CardContent>
               {profiles.length === 0 ? (
@@ -333,7 +337,7 @@ const Admin = () => {
                                 <SelectItem value="admin">Admin</SelectItem>
                                 <SelectItem value="teamleader">Teamleader</SelectItem>
                                 <SelectItem value="opener">Opener</SelectItem>
-                                <SelectItem value="organization">Organization</SelectItem>
+                                <SelectItem value="organization">Partner</SelectItem>
                               </SelectContent>
                             </Select>
                           </TableCell>
