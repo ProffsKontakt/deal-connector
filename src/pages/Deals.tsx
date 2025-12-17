@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -10,13 +11,14 @@ import { InterestBadge } from '@/components/ui/interest-badge';
 import { EmptyState } from '@/components/ui/empty-state';
 import { CreateDealDialog } from '@/components/deals/CreateDealDialog';
 import { DealDetailsDialog } from '@/components/deals/DealDetailsDialog';
-import { Search, Filter, FileText, TrendingUp } from 'lucide-react';
-import { format } from 'date-fns';
+import { Search, Filter, FileText, TrendingUp, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+import { format, startOfMonth, endOfMonth, subMonths, addMonths } from 'date-fns';
 import { sv } from 'date-fns/locale';
 
 interface Contact {
   id: string;
   email: string;
+  name: string | null;
   phone: string | null;
   address: string | null;
   date_sent: string;
@@ -42,6 +44,10 @@ const Deals = () => {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState(new Date());
+
+  const handlePreviousMonth = () => setSelectedMonth(prev => subMonths(prev, 1));
+  const handleNextMonth = () => setSelectedMonth(prev => addMonths(prev, 1));
 
   useEffect(() => {
     fetchData();
@@ -87,6 +93,7 @@ const Deals = () => {
   const filteredContacts = contacts.filter((contact) => {
     const matchesSearch = 
       contact.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      contact.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       contact.phone?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       contact.address?.toLowerCase().includes(searchTerm.toLowerCase());
 
@@ -96,7 +103,13 @@ const Deals = () => {
     const matchesStatus = filterStatus === 'all' ||
       contact.credit_requests?.some(cr => cr.status === filterStatus);
 
-    return matchesSearch && matchesOrg && matchesStatus;
+    // Month filter
+    const contactDate = new Date(contact.date_sent);
+    const monthStart = startOfMonth(selectedMonth);
+    const monthEnd = endOfMonth(selectedMonth);
+    const matchesMonth = contactDate >= monthStart && contactDate <= monthEnd;
+
+    return matchesSearch && matchesOrg && matchesStatus && matchesMonth;
   });
 
   const getLatestCreditStatus = (contact: Contact) => {
@@ -150,42 +163,63 @@ const Deals = () => {
       {/* Filters */}
       <Card className="glass-card">
         <CardHeader className="pb-4">
-          <div className="flex flex-col lg:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Sök på e-post, telefon eller adress..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 h-11"
-              />
+          <div className="flex flex-col gap-4">
+            {/* Month selector */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-primary" />
+                <span className="text-sm font-medium text-muted-foreground">Månad:</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="icon" onClick={handlePreviousMonth}>
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <span className="min-w-32 text-center font-medium">
+                  {format(selectedMonth, 'MMMM yyyy', { locale: sv })}
+                </span>
+                <Button variant="outline" size="icon" onClick={handleNextMonth}>
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
-            <div className="flex gap-3">
-              <Select value={filterOrg} onValueChange={setFilterOrg}>
-                <SelectTrigger className="w-52 h-11">
-                  <Filter className="w-4 h-4 mr-2 text-muted-foreground" />
-                  <SelectValue placeholder="Organisation" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Alla organisationer</SelectItem>
-                  {organizations.map((org) => (
-                    <SelectItem key={org.id} value={org.id}>
-                      {org.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-44 h-11">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Alla status</SelectItem>
-                  <SelectItem value="pending">Väntande</SelectItem>
-                  <SelectItem value="approved">Godkänd</SelectItem>
-                  <SelectItem value="denied">Nekad</SelectItem>
-                </SelectContent>
-              </Select>
+            
+            <div className="flex flex-col lg:flex-row gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Sök på namn, e-post, telefon eller adress..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 h-11"
+                />
+              </div>
+              <div className="flex gap-3">
+                <Select value={filterOrg} onValueChange={setFilterOrg}>
+                  <SelectTrigger className="w-52 h-11">
+                    <Filter className="w-4 h-4 mr-2 text-muted-foreground" />
+                    <SelectValue placeholder="Organisation" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Alla organisationer</SelectItem>
+                    {organizations.map((org) => (
+                      <SelectItem key={org.id} value={org.id}>
+                        {org.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={filterStatus} onValueChange={setFilterStatus}>
+                  <SelectTrigger className="w-44 h-11">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Alla status</SelectItem>
+                    <SelectItem value="pending">Väntande</SelectItem>
+                    <SelectItem value="approved">Godkänd</SelectItem>
+                    <SelectItem value="denied">Nekad</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
         </CardHeader>

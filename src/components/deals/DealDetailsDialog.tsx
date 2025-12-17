@@ -29,6 +29,7 @@ interface CreditRequest {
 interface Contact {
   id: string;
   email: string;
+  name: string | null;
   phone: string | null;
   address: string | null;
   date_sent: string;
@@ -52,6 +53,7 @@ export const DealDetailsDialog = ({ contact, organizations, open, onOpenChange, 
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [editData, setEditData] = useState({
+    name: '',
     email: '',
     phone: '',
     address: '',
@@ -64,6 +66,7 @@ export const DealDetailsDialog = ({ contact, organizations, open, onOpenChange, 
   const startEditing = () => {
     if (!contact) return;
     setEditData({
+      name: contact.name || '',
       email: contact.email,
       phone: contact.phone || '',
       address: contact.address || '',
@@ -95,6 +98,7 @@ export const DealDetailsDialog = ({ contact, organizations, open, onOpenChange, 
       const { error: contactError } = await supabase
         .from('contacts')
         .update({
+          name: editData.name || null,
           email: editData.email,
           phone: editData.phone || null,
           address: editData.address || null,
@@ -189,6 +193,14 @@ export const DealDetailsDialog = ({ contact, organizations, open, onOpenChange, 
               {isEditing ? (
                 <>
                   <div className="space-y-2">
+                    <Label htmlFor="name">Namn</Label>
+                    <Input
+                      id="name"
+                      value={editData.name}
+                      onChange={(e) => setEditData(prev => ({ ...prev, name: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
                     <Label htmlFor="email">E-post</Label>
                     <Input
                       id="email"
@@ -234,8 +246,12 @@ export const DealDetailsDialog = ({ contact, organizations, open, onOpenChange, 
               ) : (
                 <>
                   <div className="flex items-center gap-3">
-                    <Mail className="w-4 h-4 text-primary" />
-                    <span className="font-medium">{contact.email}</span>
+                    <User className="w-4 h-4 text-primary" />
+                    <span className="font-medium">{contact.name || 'Ej angivet'}</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Mail className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-muted-foreground">{contact.email}</span>
                   </div>
                   <div className="flex items-center gap-3">
                     <Phone className="w-4 h-4 text-muted-foreground" />
@@ -247,8 +263,9 @@ export const DealDetailsDialog = ({ contact, organizations, open, onOpenChange, 
                   </div>
                   <div className="flex items-center gap-3">
                     <User className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">
-                      Opener: {contact.opener?.full_name || contact.opener?.email || 'Okänd'}
+                    <span className="text-muted-foreground">Opener:</span>
+                    <span className="px-3 py-1 rounded-[15px] bg-primary/10 text-primary text-sm font-medium">
+                      {contact.opener?.full_name || contact.opener?.email || 'Okänd'}
                     </span>
                   </div>
                   <div className="flex items-center gap-3 pt-2">
@@ -268,24 +285,34 @@ export const DealDetailsDialog = ({ contact, organizations, open, onOpenChange, 
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                 <Building2 className="w-4 h-4" />
-                Synlig för organisationer
+                Tilldelade bolag
               </CardTitle>
             </CardHeader>
             <CardContent>
               {isEditing ? (
                 <div className="space-y-2">
-                  {organizations.map((org) => (
-                    <div key={org.id} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={org.id}
-                        checked={editData.selectedOrganizations.includes(org.id)}
-                        onCheckedChange={() => toggleOrganization(org.id)}
-                      />
-                      <label htmlFor={org.id} className="text-sm cursor-pointer">
-                        {org.name}
-                      </label>
-                    </div>
-                  ))}
+                  {organizations.map((org) => {
+                    const isChecked = editData.selectedOrganizations.includes(org.id);
+                    return (
+                      <div key={org.id} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`org-${org.id}`}
+                          checked={isChecked}
+                          onCheckedChange={(checked) => {
+                            setEditData(prev => ({
+                              ...prev,
+                              selectedOrganizations: checked
+                                ? [...prev.selectedOrganizations, org.id]
+                                : prev.selectedOrganizations.filter(id => id !== org.id),
+                            }));
+                          }}
+                        />
+                        <label htmlFor={`org-${org.id}`} className="text-sm cursor-pointer">
+                          {org.name}
+                        </label>
+                      </div>
+                    );
+                  })}
                 </div>
               ) : (
                 contact.organizations && contact.organizations.length > 0 ? (
@@ -300,7 +327,7 @@ export const DealDetailsDialog = ({ contact, organizations, open, onOpenChange, 
                     ))}
                   </div>
                 ) : (
-                  <p className="text-muted-foreground text-sm">Inga organisationer kopplade</p>
+                  <p className="text-muted-foreground text-sm">Inga bolag tilldelade</p>
                 )
               )}
             </CardContent>
