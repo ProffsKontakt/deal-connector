@@ -16,15 +16,18 @@ export const CreateOrganizationDialog = ({ onCreated }: CreateOrganizationDialog
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
+    contact_person_name: '',
+    contact_phone: '',
     price_per_solar_deal: '',
     price_per_battery_deal: '',
+    price_per_site_visit: '',
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.name.trim()) {
-      toast.error('Organisationsnamn krävs');
+      toast.error('Partnernamn krävs');
       return;
     }
 
@@ -32,18 +35,22 @@ export const CreateOrganizationDialog = ({ onCreated }: CreateOrganizationDialog
     try {
       const { error } = await supabase.from('organizations').insert({
         name: formData.name.trim(),
+        contact_person_name: formData.contact_person_name.trim() || null,
+        contact_phone: formData.contact_phone.trim() || null,
         price_per_solar_deal: formData.price_per_solar_deal ? parseFloat(formData.price_per_solar_deal) : null,
         price_per_battery_deal: formData.price_per_battery_deal ? parseFloat(formData.price_per_battery_deal) : null,
+        price_per_site_visit: formData.price_per_site_visit ? parseFloat(formData.price_per_site_visit) : null,
+        status: 'active' as const
       });
 
       if (error) throw error;
 
-      toast.success('Organisation skapad');
-      setFormData({ name: '', price_per_solar_deal: '', price_per_battery_deal: '' });
+      toast.success('🎉 Partner skapad');
+      setFormData({ name: '', contact_person_name: '', contact_phone: '', price_per_solar_deal: '', price_per_battery_deal: '', price_per_site_visit: '' });
       setOpen(false);
       onCreated();
     } catch (error: any) {
-      toast.error('Kunde inte skapa organisation: ' + error.message);
+      toast.error('⚠️ Kunde inte skapa partner: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -54,27 +61,47 @@ export const CreateOrganizationDialog = ({ onCreated }: CreateOrganizationDialog
       <DialogTrigger asChild>
         <Button className="gap-2">
           <Plus className="w-4 h-4" />
-          Ny Organisation
+          Ny Partner
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Skapa ny organisation</DialogTitle>
+          <DialogTitle>Skapa ny partner</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="org-name">Namn *</Label>
+            <Label htmlFor="org-name">Företagsnamn *</Label>
             <Input
               id="org-name"
               value={formData.name}
               onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-              placeholder="Organisation AB"
+              placeholder="Företag AB"
               required
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="solar-price">Pris per Sol-deal (kr)</Label>
+              <Label htmlFor="contact-name">Kontaktperson</Label>
+              <Input
+                id="contact-name"
+                value={formData.contact_person_name}
+                onChange={(e) => setFormData(prev => ({ ...prev, contact_person_name: e.target.value }))}
+                placeholder="Anna Svensson"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="contact-phone">Telefon</Label>
+              <Input
+                id="contact-phone"
+                value={formData.contact_phone}
+                onChange={(e) => setFormData(prev => ({ ...prev, contact_phone: e.target.value }))}
+                placeholder="070-123 45 67"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="solar-price">Sol-pris (kr)</Label>
               <Input
                 id="solar-price"
                 type="number"
@@ -84,12 +111,22 @@ export const CreateOrganizationDialog = ({ onCreated }: CreateOrganizationDialog
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="battery-price">Pris per Batteri-deal (kr)</Label>
+              <Label htmlFor="battery-price">Batteri-pris (kr)</Label>
               <Input
                 id="battery-price"
                 type="number"
                 value={formData.price_per_battery_deal}
                 onChange={(e) => setFormData(prev => ({ ...prev, price_per_battery_deal: e.target.value }))}
+                placeholder="0"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="site-visit-price">Platsbesök (kr)</Label>
+              <Input
+                id="site-visit-price"
+                type="number"
+                value={formData.price_per_site_visit}
+                onChange={(e) => setFormData(prev => ({ ...prev, price_per_site_visit: e.target.value }))}
                 placeholder="0"
               />
             </div>
