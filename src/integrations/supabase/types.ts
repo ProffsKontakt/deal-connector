@@ -148,27 +148,39 @@ export type Database = {
       }
       organizations: {
         Row: {
+          contact_person_name: string | null
+          contact_phone: string | null
           created_at: string
           id: string
           name: string
           price_per_battery_deal: number | null
+          price_per_site_visit: number | null
           price_per_solar_deal: number | null
+          status: Database["public"]["Enums"]["organization_status"]
           updated_at: string
         }
         Insert: {
+          contact_person_name?: string | null
+          contact_phone?: string | null
           created_at?: string
           id?: string
           name: string
           price_per_battery_deal?: number | null
+          price_per_site_visit?: number | null
           price_per_solar_deal?: number | null
+          status?: Database["public"]["Enums"]["organization_status"]
           updated_at?: string
         }
         Update: {
+          contact_person_name?: string | null
+          contact_phone?: string | null
           created_at?: string
           id?: string
           name?: string
           price_per_battery_deal?: number | null
+          price_per_site_visit?: number | null
           price_per_solar_deal?: number | null
+          status?: Database["public"]["Enums"]["organization_status"]
           updated_at?: string
         }
         Relationships: []
@@ -250,6 +262,7 @@ export type Database = {
     Enums: {
       credit_status: "pending" | "approved" | "denied"
       interest_type: "sun" | "battery" | "sun_battery"
+      organization_status: "active" | "archived"
       user_role: "admin" | "teamleader" | "opener" | "organization"
     }
     CompositeTypes: {
@@ -380,6 +393,7 @@ export const Constants = {
     Enums: {
       credit_status: ["pending", "approved", "denied"],
       interest_type: ["sun", "battery", "sun_battery"],
+      organization_status: ["active", "archived"],
       user_role: ["admin", "teamleader", "opener", "organization"],
     },
   },

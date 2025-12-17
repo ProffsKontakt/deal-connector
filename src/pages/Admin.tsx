@@ -10,13 +10,24 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { EmptyState } from '@/components/ui/empty-state';
 import { CreateOrganizationDialog } from '@/components/admin/CreateOrganizationDialog';
+import { BulkImportPartnersDialog } from '@/components/admin/BulkImportPartnersDialog';
 import { AddUserDialog } from '@/components/admin/AddUserDialog';
 import { toast } from 'sonner';
-import { Building2, Users, CreditCard, Check, X, Save, Settings, Inbox } from 'lucide-react';
+import { Building2, Users, CreditCard, Check, X, Save, Settings, Inbox, Archive, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { sv } from 'date-fns/locale';
 import { Navigate } from 'react-router-dom';
 import type { Database } from '@/integrations/supabase/types';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 type UserRole = Database['public']['Enums']['user_role'];
 type CreditStatus = Database['public']['Enums']['credit_status'];
@@ -24,8 +35,12 @@ type CreditStatus = Database['public']['Enums']['credit_status'];
 interface Organization {
   id: string;
   name: string;
+  status: 'active' | 'archived';
+  contact_person_name: string | null;
+  contact_phone: string | null;
   price_per_solar_deal: number | null;
   price_per_battery_deal: number | null;
+  price_per_site_visit: number | null;
 }
 
 interface Profile {
@@ -53,18 +68,20 @@ const Admin = () => {
   const [creditRequests, setCreditRequests] = useState<CreditRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingOrg, setEditingOrg] = useState<string | null>(null);
-  const [orgPrices, setOrgPrices] = useState<Record<string, { solar: string; battery: string }>>({});
+  const [orgPrices, setOrgPrices] = useState<Record<string, { solar: string; battery: string; siteVisit: string }>>({});
+  const [orgStatusFilter, setOrgStatusFilter] = useState<'active' | 'archived'>('active');
+  const [deleteOrg, setDeleteOrg] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
     if (profile?.role === 'admin') {
       fetchData();
     }
-  }, [profile]);
+  }, [profile, orgStatusFilter]);
 
   const fetchData = async () => {
     try {
       const [orgsRes, profilesRes, creditsRes] = await Promise.all([
-        supabase.from('organizations').select('*').order('name'),
+        supabase.from('organizations').select('*').eq('status', orgStatusFilter).order('name'),
         supabase.from('profiles').select('*').order('email'),
         supabase.from('credit_requests')
           .select(`
@@ -77,12 +94,13 @@ const Admin = () => {
       ]);
 
       if (orgsRes.data) {
-        setOrganizations(orgsRes.data);
-        const prices: Record<string, { solar: string; battery: string }> = {};
+        setOrganizations(orgsRes.data as Organization[]);
+        const prices: Record<string, { solar: string; battery: string; siteVisit: string }> = {};
         orgsRes.data.forEach(org => {
           prices[org.id] = {
             solar: org.price_per_solar_deal?.toString() || '',
-            battery: org.price_per_battery_deal?.toString() || ''
+            battery: org.price_per_battery_deal?.toString() || '',
+            siteVisit: org.price_per_site_visit?.toString() || ''
           };
         });
         setOrgPrices(prices);
@@ -100,7 +118,8 @@ const Admin = () => {
       .from('organizations')
       .update({
         price_per_solar_deal: prices.solar ? parseFloat(prices.solar) : null,
-        price_per_battery_deal: prices.battery ? parseFloat(prices.battery) : null
+        price_per_battery_deal: prices.battery ? parseFloat(prices.battery) : null,
+        price_per_site_visit: prices.siteVisit ? parseFloat(prices.siteVisit) : null
       })
       .eq('id', orgId);
 
@@ -111,6 +130,54 @@ const Admin = () => {
     
     toast.success('🎉 Priser uppdaterade');
     setEditingOrg(null);
+    fetchData();
+  };
+
+  const handleArchiveOrg = async (orgId: string) => {
+    const { error } = await supabase
+      .from('organizations')
+      .update({ status: 'archived' })
+      .eq('id', orgId);
+
+    if (error) {
+      toast.error('⚠️ Kunde inte arkivera partner');
+      return;
+    }
+
+    toast.success('Partner arkiverad');
+    fetchData();
+  };
+
+  const handleActivateOrg = async (orgId: string) => {
+    const { error } = await supabase
+      .from('organizations')
+      .update({ status: 'active' })
+      .eq('id', orgId);
+
+    if (error) {
+      toast.error('⚠️ Kunde inte aktivera partner');
+      return;
+    }
+
+    toast.success('Partner aktiverad');
+    fetchData();
+  };
+
+  const handleDeleteOrg = async () => {
+    if (!deleteOrg) return;
+
+    const { error } = await supabase
+      .from('organizations')
+      .delete()
+      .eq('id', deleteOrg.id);
+
+    if (error) {
+      toast.error('⚠️ Kunde inte ta bort partner: ' + error.message);
+      return;
+    }
+
+    toast.success('Partner borttagen');
+    setDeleteOrg(null);
     fetchData();
   };
 
@@ -196,35 +263,67 @@ const Admin = () => {
 
         <TabsContent value="organizations" className="animate-fade-in">
           <Card className="glass-card">
-            <CardHeader className="flex flex-row items-center justify-between pb-4">
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4">
               <div>
-                <CardTitle className="text-xl">Organisationer & Priser</CardTitle>
-                <CardDescription>Hantera organisationer och deras prissättning</CardDescription>
+                <CardTitle className="text-xl">Partners & Priser</CardTitle>
+                <CardDescription>Hantera partners och deras prissättning</CardDescription>
               </div>
-              <CreateOrganizationDialog onCreated={fetchData} />
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Status filter buttons */}
+                <div className="flex rounded-lg border border-border overflow-hidden">
+                  <Button
+                    variant={orgStatusFilter === 'active' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setOrgStatusFilter('active')}
+                    className="rounded-none"
+                  >
+                    Aktiv
+                  </Button>
+                  <Button
+                    variant={orgStatusFilter === 'archived' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setOrgStatusFilter('archived')}
+                    className="rounded-none"
+                  >
+                    Avstängd
+                  </Button>
+                </div>
+                <BulkImportPartnersDialog onImported={fetchData} />
+                <CreateOrganizationDialog onCreated={fetchData} />
+              </div>
             </CardHeader>
             <CardContent>
               {organizations.length === 0 ? (
                 <EmptyState
                   icon={Building2}
-                  title="Inga organisationer"
-                  description="Skapa din första organisation för att komma igång"
+                  title={orgStatusFilter === 'active' ? 'Inga aktiva partners' : 'Inga arkiverade partners'}
+                  description={orgStatusFilter === 'active' 
+                    ? 'Skapa din första partner för att komma igång' 
+                    : 'Det finns inga arkiverade partners'}
                 />
               ) : (
                 <div className="rounded-xl border border-border overflow-hidden">
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/30 hover:bg-muted/30">
-                        <TableHead className="font-semibold">Namn</TableHead>
-                        <TableHead className="font-semibold">Pris per Sol-deal</TableHead>
-                        <TableHead className="font-semibold">Pris per Batteri-deal</TableHead>
-                        <TableHead className="w-28 font-semibold">Åtgärder</TableHead>
+                        <TableHead className="font-semibold">Partner</TableHead>
+                        <TableHead className="font-semibold">Sol-pris</TableHead>
+                        <TableHead className="font-semibold">Batteri-pris</TableHead>
+                        <TableHead className="font-semibold">Platsbesök-pris</TableHead>
+                        <TableHead className="w-36 font-semibold">Åtgärder</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {organizations.map((org) => (
                         <TableRow key={org.id} className="group">
-                          <TableCell className="font-medium">{org.name}</TableCell>
+                          <TableCell>
+                            <div>
+                              <p className="font-medium">{org.name}</p>
+                              {org.contact_person_name && (
+                                <p className="text-xs text-muted-foreground">{org.contact_person_name}</p>
+                              )}
+                            </div>
+                          </TableCell>
                           <TableCell>
                             {editingOrg === org.id ? (
                               <Input
@@ -234,7 +333,7 @@ const Admin = () => {
                                   ...prev,
                                   [org.id]: { ...prev[org.id], solar: e.target.value }
                                 }))}
-                                className="w-32 h-9"
+                                className="w-24 h-9"
                                 placeholder="0"
                               />
                             ) : (
@@ -252,7 +351,7 @@ const Admin = () => {
                                   ...prev,
                                   [org.id]: { ...prev[org.id], battery: e.target.value }
                                 }))}
-                                className="w-32 h-9"
+                                className="w-24 h-9"
                                 placeholder="0"
                               />
                             ) : (
@@ -263,24 +362,76 @@ const Admin = () => {
                           </TableCell>
                           <TableCell>
                             {editingOrg === org.id ? (
-                              <Button
-                                size="sm"
-                                onClick={() => handleSaveOrgPrices(org.id)}
-                                className="gap-1.5"
-                              >
-                                <Save className="w-3.5 h-3.5" />
-                                Spara
-                              </Button>
+                              <Input
+                                type="number"
+                                value={orgPrices[org.id]?.siteVisit || ''}
+                                onChange={(e) => setOrgPrices(prev => ({
+                                  ...prev,
+                                  [org.id]: { ...prev[org.id], siteVisit: e.target.value }
+                                }))}
+                                className="w-24 h-9"
+                                placeholder="0"
+                              />
                             ) : (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => setEditingOrg(org.id)}
-                                className="opacity-0 group-hover:opacity-100 transition-opacity"
-                              >
-                                Redigera
-                              </Button>
+                              <span className="text-muted-foreground">
+                                {org.price_per_site_visit ? `${org.price_per_site_visit.toLocaleString('sv-SE')} kr` : '–'}
+                              </span>
                             )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-1">
+                              {editingOrg === org.id ? (
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleSaveOrgPrices(org.id)}
+                                  className="gap-1.5"
+                                >
+                                  <Save className="w-3.5 h-3.5" />
+                                  Spara
+                                </Button>
+                              ) : (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => setEditingOrg(org.id)}
+                                    className="opacity-0 group-hover:opacity-100 transition-opacity"
+                                  >
+                                    Redigera
+                                  </Button>
+                                  {orgStatusFilter === 'active' ? (
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => handleArchiveOrg(org.id)}
+                                      className="opacity-0 group-hover:opacity-100 transition-opacity"
+                                      title="Arkivera"
+                                    >
+                                      <Archive className="w-4 h-4" />
+                                    </Button>
+                                  ) : (
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => handleActivateOrg(org.id)}
+                                      className="opacity-0 group-hover:opacity-100 transition-opacity"
+                                      title="Aktivera"
+                                    >
+                                      <Building2 className="w-4 h-4" />
+                                    </Button>
+                                  )}
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
+                                    onClick={() => setDeleteOrg({ id: org.id, name: org.name })}
+                                    title="Ta bort"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </>
+                              )}
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -427,6 +578,25 @@ const Admin = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={!!deleteOrg} onOpenChange={() => setDeleteOrg(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Ta bort partner?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Är du säker på att du vill ta bort <strong>{deleteOrg?.name}</strong>? 
+              Detta kan inte ångras och all data kopplad till denna partner kan påverkas.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteOrg} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Ta bort
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
