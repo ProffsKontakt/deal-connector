@@ -80,13 +80,19 @@ export const DealDetailsDialog = ({ contact, organizations, open, onOpenChange, 
     setIsEditing(false);
   };
 
-  const toggleOrganization = (orgId: string) => {
-    setEditData(prev => ({
-      ...prev,
-      selectedOrganizations: prev.selectedOrganizations.includes(orgId)
-        ? prev.selectedOrganizations.filter(id => id !== orgId)
-        : [...prev.selectedOrganizations, orgId],
-    }));
+  const handleOrganizationChange = (orgId: string, checked: boolean) => {
+    setEditData(prev => {
+      const currentSet = new Set(prev.selectedOrganizations);
+      if (checked) {
+        currentSet.add(orgId);
+      } else {
+        currentSet.delete(orgId);
+      }
+      return {
+        ...prev,
+        selectedOrganizations: Array.from(currentSet),
+      };
+    });
   };
 
   const handleSave = async () => {
@@ -291,28 +297,18 @@ export const DealDetailsDialog = ({ contact, organizations, open, onOpenChange, 
             <CardContent>
               {isEditing ? (
                 <div className="space-y-2">
-                  {organizations.map((org) => {
-                    const isChecked = editData.selectedOrganizations.includes(org.id);
-                    return (
-                      <div key={org.id} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`org-${org.id}`}
-                          checked={isChecked}
-                          onCheckedChange={(checked) => {
-                            setEditData(prev => ({
-                              ...prev,
-                              selectedOrganizations: checked
-                                ? [...prev.selectedOrganizations, org.id]
-                                : prev.selectedOrganizations.filter(id => id !== org.id),
-                            }));
-                          }}
-                        />
-                        <label htmlFor={`org-${org.id}`} className="text-sm cursor-pointer">
-                          {org.name}
-                        </label>
-                      </div>
-                    );
-                  })}
+                  {organizations.map((org) => (
+                    <div key={org.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`org-${org.id}`}
+                        checked={editData.selectedOrganizations.includes(org.id)}
+                        onCheckedChange={(checked) => handleOrganizationChange(org.id, checked === true)}
+                      />
+                      <label htmlFor={`org-${org.id}`} className="text-sm cursor-pointer">
+                        {org.name}
+                      </label>
+                    </div>
+                  ))}
                 </div>
               ) : (
                 contact.organizations && contact.organizations.length > 0 ? (
