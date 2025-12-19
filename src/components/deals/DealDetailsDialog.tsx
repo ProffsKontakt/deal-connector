@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,12 @@ interface Organization {
   name: string;
 }
 
+interface Opener {
+  id: string;
+  full_name: string | null;
+  email: string;
+}
+
 interface CreditRequest {
   status: 'pending' | 'approved' | 'denied';
   organization_id: string;
@@ -34,6 +40,7 @@ interface Contact {
   address: string | null;
   date_sent: string;
   interest: 'sun' | 'battery' | 'sun_battery';
+  opener_id?: string;
   opener?: { email: string; full_name: string | null };
   organizations?: Organization[];
   credit_requests?: CreditRequest[];
@@ -52,14 +59,27 @@ export const DealDetailsDialog = ({ contact, organizations, open, onOpenChange, 
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [openers, setOpeners] = useState<Opener[]>([]);
   const [editData, setEditData] = useState({
     name: '',
     email: '',
     phone: '',
     address: '',
     interest: '' as 'sun' | 'battery' | 'sun_battery',
+    opener_id: '',
     selectedOrganizations: [] as string[],
   });
+
+  useEffect(() => {
+    const fetchOpeners = async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, full_name, email')
+        .in('role', ['opener', 'teamleader']);
+      if (data) setOpeners(data);
+    };
+    fetchOpeners();
+  }, []);
 
   const isAdmin = profile?.role === 'admin';
 
@@ -71,6 +91,7 @@ export const DealDetailsDialog = ({ contact, organizations, open, onOpenChange, 
       phone: contact.phone || '',
       address: contact.address || '',
       interest: contact.interest,
+      opener_id: contact.opener_id || '',
       selectedOrganizations: contact.organizations?.map(o => o.id) || [],
     });
     setIsEditing(true);
@@ -109,6 +130,7 @@ export const DealDetailsDialog = ({ contact, organizations, open, onOpenChange, 
           phone: editData.phone || null,
           address: editData.address || null,
           interest: editData.interest,
+          opener_id: editData.opener_id,
         })
         .eq('id', contact.id);
 
@@ -245,6 +267,24 @@ export const DealDetailsDialog = ({ contact, organizations, open, onOpenChange, 
                         <SelectItem value="sun">Sol</SelectItem>
                         <SelectItem value="battery">Batteri</SelectItem>
                         <SelectItem value="sun_battery">Sol + Batteri</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Opener</Label>
+                    <Select
+                      value={editData.opener_id}
+                      onValueChange={(value) => setEditData(prev => ({ ...prev, opener_id: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Välj opener" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {openers.map((opener) => (
+                          <SelectItem key={opener.id} value={opener.id}>
+                            {opener.full_name || opener.email}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
