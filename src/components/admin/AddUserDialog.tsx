@@ -138,6 +138,7 @@ export const AddUserDialog = ({ onCreated }: AddUserDialogProps) => {
                 <SelectItem value="admin">Admin</SelectItem>
                 <SelectItem value="teamleader">Teamleader</SelectItem>
                 <SelectItem value="opener">Opener</SelectItem>
+                <SelectItem value="closer">Closer</SelectItem>
                 <SelectItem value="organization">Partner</SelectItem>
               </SelectContent>
             </Select>

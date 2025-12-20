@@ -6,12 +6,12 @@ import { FileText, CreditCard, User, LogOut, Building2, Settings, Sun, Moon, Use
 import { Button } from "@/components/ui/button";
 
 const navItems = [
-  { to: "/deals", label: "Deals", icon: FileText, roles: ["admin", "teamleader", "opener", "organization"] },
+  { to: "/deals", label: "Deals", icon: FileText, roles: ["admin", "teamleader", "opener", "organization", "closer"] },
   { to: "/kreditera", label: "Kreditera", icon: CreditCard, roles: ["organization"] },
-  { to: "/openers", label: "Openers", icon: Users, roles: ["admin"] },
+  { to: "/saljare", label: "Säljare", icon: Users, roles: ["admin"] },
   { to: "/partners", label: "Partners", icon: Handshake, roles: ["admin"] },
   { to: "/admin", label: "Admin", icon: Settings, roles: ["admin"] },
-  { to: "/minsida", label: "Min Sida", icon: User, roles: ["admin", "teamleader", "opener", "organization"] },
+  { to: "/minsida", label: "Min Sida", icon: User, roles: ["admin", "teamleader", "opener", "organization", "closer"] },
 ];
 
 export const Sidebar = () => {
@@ -35,6 +35,7 @@ export const Sidebar = () => {
       admin: "Administrator",
       teamleader: "Teamleader",
       opener: "Opener",
+      closer: "Closer",
       organization: "Partner",
     };
     return labels[role] || role;
