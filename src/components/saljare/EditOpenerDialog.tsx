@@ -21,6 +21,7 @@ export const EditOpenerDialog = ({ opener, open, onOpenChange, onUpdated }: Edit
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     full_name: '',
+    opener_commission_per_lead: '200',
     opener_commission_per_deal: '1000',
   });
 
@@ -35,13 +36,14 @@ export const EditOpenerDialog = ({ opener, open, onOpenChange, onUpdated }: Edit
     
     const { data } = await supabase
       .from('profiles')
-      .select('full_name, opener_commission_per_deal')
+      .select('full_name, opener_commission_per_lead, opener_commission_per_deal')
       .eq('id', opener.id)
       .single();
     
     if (data) {
       setFormData({
         full_name: data.full_name || '',
+        opener_commission_per_lead: (data.opener_commission_per_lead ?? 200).toString(),
         opener_commission_per_deal: (data.opener_commission_per_deal ?? 1000).toString(),
       });
     }
@@ -57,6 +59,7 @@ export const EditOpenerDialog = ({ opener, open, onOpenChange, onUpdated }: Edit
         .from('profiles')
         .update({
           full_name: formData.full_name.trim() || null,
+          opener_commission_per_lead: parseFloat(formData.opener_commission_per_lead) || 200,
           opener_commission_per_deal: parseFloat(formData.opener_commission_per_deal) || 1000,
         })
         .eq('id', opener.id);
@@ -96,16 +99,29 @@ export const EditOpenerDialog = ({ opener, open, onOpenChange, onUpdated }: Edit
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="edit-opener-commission">Provision per lead (kr)</Label>
+            <Label htmlFor="edit-opener-commission-lead">Provision per lead (kr)</Label>
             <Input
-              id="edit-opener-commission"
+              id="edit-opener-commission-lead"
+              type="number"
+              value={formData.opener_commission_per_lead}
+              onChange={(e) => setFormData(prev => ({ ...prev, opener_commission_per_lead: e.target.value }))}
+              placeholder="200"
+            />
+            <p className="text-xs text-muted-foreground">
+              Standard: 200 kr per genererat lead
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-opener-commission-deal">Bonus vid stängd affär (kr)</Label>
+            <Input
+              id="edit-opener-commission-deal"
               type="number"
               value={formData.opener_commission_per_deal}
               onChange={(e) => setFormData(prev => ({ ...prev, opener_commission_per_deal: e.target.value }))}
               placeholder="1000"
             />
-            <p className="text-sm text-muted-foreground">
-              Standard: 1 000 kr per stängd affär
+            <p className="text-xs text-muted-foreground">
+              Standard: 1 000 kr när deras lead leder till affär
             </p>
           </div>
           <div className="flex justify-end gap-2 pt-4">

@@ -31,6 +31,9 @@ export const CreateCloserDialog = ({ onCreated }: CreateCloserDialogProps) => {
     email: '',
     password: '',
     full_name: '',
+    base_commission: '8000',
+    markup_percentage: '40',
+    company_markup_share: '70',
   });
   const [selectedRegions, setSelectedRegions] = useState<{ regionId: string; organizationId: string }[]>([]);
 
@@ -109,12 +112,15 @@ export const CreateCloserDialog = ({ onCreated }: CreateCloserDialogProps) => {
       if (error) throw error;
 
       if (data.user) {
-        // Update the profile with closer role and name
+        // Update the profile with closer role, name and commission settings
         await supabase
           .from('profiles')
           .update({ 
             role: 'closer',
             full_name: formData.full_name.trim(),
+            closer_base_commission: parseFloat(formData.base_commission) || 8000,
+            closer_markup_percentage: parseFloat(formData.markup_percentage) || 40,
+            closer_company_markup_share: parseFloat(formData.company_markup_share) || 70,
           })
           .eq('id', data.user.id);
 
@@ -142,7 +148,7 @@ export const CreateCloserDialog = ({ onCreated }: CreateCloserDialogProps) => {
       }
 
       toast.success('Closer skapad');
-      setFormData({ email: '', password: '', full_name: '' });
+      setFormData({ email: '', password: '', full_name: '', base_commission: '8000', markup_percentage: '40', company_markup_share: '70' });
       setSelectedRegions([]);
       setOpen(false);
       onCreated();
@@ -235,13 +241,44 @@ export const CreateCloserDialog = ({ onCreated }: CreateCloserDialogProps) => {
             )}
           </div>
 
-          <div className="bg-muted/50 rounded-lg p-3 text-sm">
-            <p className="font-medium mb-1">Provisionsstruktur för closers:</p>
-            <ul className="text-muted-foreground space-y-1">
-              <li>• Basprovision: 8 000 kr (vid minst 22 000 kr fakturerbart)</li>
-              <li>• -50% av rabatterat belopp under 22 000 kr</li>
-              <li>• Beräknas på: Ordervärde ex moms - materialkostnad - baskostnad - LF Finans</li>
-            </ul>
+          <div className="space-y-4 border-t pt-4">
+            <h4 className="font-medium">Provisionsstruktur</h4>
+            
+            <div className="space-y-2">
+              <Label htmlFor="closer-base-commission">Basprovision per standardaffär (kr)</Label>
+              <Input
+                id="closer-base-commission"
+                type="number"
+                value={formData.base_commission}
+                onChange={(e) => setFormData(prev => ({ ...prev, base_commission: e.target.value }))}
+                placeholder="8000"
+              />
+              <p className="text-xs text-muted-foreground">Standard: 8 000 kr per stängd affär</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="closer-company-share">ProffsKontakts andel av påslag (%)</Label>
+              <Input
+                id="closer-company-share"
+                type="number"
+                value={formData.company_markup_share}
+                onChange={(e) => setFormData(prev => ({ ...prev, company_markup_share: e.target.value }))}
+                placeholder="70"
+              />
+              <p className="text-xs text-muted-foreground">Hur stor del av påslag ex moms som ProffsKontakt tar (t.ex. 70%)</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="closer-markup-percentage">Closerns andel av bolagets påslag (%)</Label>
+              <Input
+                id="closer-markup-percentage"
+                type="number"
+                value={formData.markup_percentage}
+                onChange={(e) => setFormData(prev => ({ ...prev, markup_percentage: e.target.value }))}
+                placeholder="40"
+              />
+              <p className="text-xs text-muted-foreground">Hur stor del av ProffsKontakts påslag som closern får (t.ex. 40%)</p>
+            </div>
           </div>
 
           <div className="flex justify-end gap-2 pt-4">
