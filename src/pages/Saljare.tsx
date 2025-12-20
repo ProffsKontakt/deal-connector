@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Users, TrendingUp, Sun, Battery, Calculator, UserCheck, MapPin } from 'lucide-react';
+import { CreateOpenerDialog } from '@/components/saljare/CreateOpenerDialog';
+import { CreateCloserDialog } from '@/components/saljare/CreateCloserDialog';
 
 interface OpenerStats {
   id: string;
@@ -226,23 +228,26 @@ const Saljare = () => {
         {/* Openers Tab Content */}
         <TabsContent value="openers" className="space-y-6">
           {/* Sub Tab Buttons */}
-          <div className="flex gap-2">
-            <Button
-              variant={activeSubTab === 'prestanda' ? 'default' : 'outline'}
-              onClick={() => setActiveSubTab('prestanda')}
-              className="gap-2"
-            >
-              <TrendingUp className="w-4 h-4" />
-              Prestanda
-            </Button>
-            <Button
-              variant={activeSubTab === 'siffror' ? 'default' : 'outline'}
-              onClick={() => setActiveSubTab('siffror')}
-              className="gap-2"
-            >
-              <Calculator className="w-4 h-4" />
-              Siffror
-            </Button>
+          <div className="flex items-center justify-between">
+            <div className="flex gap-2">
+              <Button
+                variant={activeSubTab === 'prestanda' ? 'default' : 'outline'}
+                onClick={() => setActiveSubTab('prestanda')}
+                className="gap-2"
+              >
+                <TrendingUp className="w-4 h-4" />
+                Prestanda
+              </Button>
+              <Button
+                variant={activeSubTab === 'siffror' ? 'default' : 'outline'}
+                onClick={() => setActiveSubTab('siffror')}
+                className="gap-2"
+              >
+                <Calculator className="w-4 h-4" />
+                Siffror
+              </Button>
+            </div>
+            <CreateOpenerDialog onCreated={fetchAllData} />
           </div>
 
           {/* Prestanda Tab */}
@@ -387,23 +392,26 @@ const Saljare = () => {
         {/* Closers Tab Content */}
         <TabsContent value="closers" className="space-y-6">
           {/* Sub Tab Buttons */}
-          <div className="flex gap-2">
-            <Button
-              variant={activeSubTab === 'prestanda' ? 'default' : 'outline'}
-              onClick={() => setActiveSubTab('prestanda')}
-              className="gap-2"
-            >
-              <TrendingUp className="w-4 h-4" />
-              Prestanda
-            </Button>
-            <Button
-              variant={activeSubTab === 'siffror' ? 'default' : 'outline'}
-              onClick={() => setActiveSubTab('siffror')}
-              className="gap-2"
-            >
-              <Calculator className="w-4 h-4" />
-              Siffror
-            </Button>
+          <div className="flex items-center justify-between">
+            <div className="flex gap-2">
+              <Button
+                variant={activeSubTab === 'prestanda' ? 'default' : 'outline'}
+                onClick={() => setActiveSubTab('prestanda')}
+                className="gap-2"
+              >
+                <TrendingUp className="w-4 h-4" />
+                Prestanda
+              </Button>
+              <Button
+                variant={activeSubTab === 'siffror' ? 'default' : 'outline'}
+                onClick={() => setActiveSubTab('siffror')}
+                className="gap-2"
+              >
+                <Calculator className="w-4 h-4" />
+                Siffror
+              </Button>
+            </div>
+            <CreateCloserDialog onCreated={fetchAllData} />
           </div>
 
           {/* Prestanda Tab */}
