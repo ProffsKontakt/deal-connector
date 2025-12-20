@@ -11,7 +11,7 @@ import Deals from "./pages/Deals";
 import Kreditera from "./pages/Kreditera";
 import MinSida from "./pages/MinSida";
 import Admin from "./pages/Admin";
-import Openers from "./pages/Openers";
+import Saljare from "./pages/Saljare";
 import Partners from "./pages/Partners";
 import NotFound from "./pages/NotFound";
 
@@ -31,8 +31,8 @@ const App = () => (
               <Route element={<AppLayout />}>
                 <Route path="/deals" element={<Deals />} />
                 <Route path="/kreditera" element={<Kreditera />} />
-                <Route path="/admin" element={<Admin />} />
-                <Route path="/openers" element={<Openers />} />
+              <Route path="/admin" element={<Admin />} />
+                <Route path="/saljare" element={<Saljare />} />
                 <Route path="/partners" element={<Partners />} />
                 <Route path="/minsida" element={<MinSida />} />
               </Route>

@@ -14,6 +14,52 @@ export type Database = {
   }
   public: {
     Tables: {
+      closer_regions: {
+        Row: {
+          closer_id: string
+          created_at: string
+          id: string
+          organization_id: string
+          region_id: string
+        }
+        Insert: {
+          closer_id: string
+          created_at?: string
+          id?: string
+          organization_id: string
+          region_id: string
+        }
+        Update: {
+          closer_id?: string
+          created_at?: string
+          id?: string
+          organization_id?: string
+          region_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "closer_regions_closer_id_fkey"
+            columns: ["closer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "closer_regions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "closer_regions_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contact_organizations: {
         Row: {
           contact_id: string
@@ -58,6 +104,8 @@ export type Database = {
           name: string | null
           opener_id: string
           phone: string | null
+          postal_code: string | null
+          region_id: string | null
           updated_at: string
         }
         Insert: {
@@ -70,6 +118,8 @@ export type Database = {
           name?: string | null
           opener_id: string
           phone?: string | null
+          postal_code?: string | null
+          region_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -82,6 +132,8 @@ export type Database = {
           name?: string | null
           opener_id?: string
           phone?: string | null
+          postal_code?: string | null
+          region_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -90,6 +142,13 @@ export type Database = {
             columns: ["opener_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contacts_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
             referencedColumns: ["id"]
           },
         ]
@@ -149,6 +208,44 @@ export type Database = {
           },
         ]
       }
+      organization_commission_settings: {
+        Row: {
+          base_cost: number
+          created_at: string
+          eur_to_sek_rate: number
+          id: string
+          lf_finans_percent: number
+          organization_id: string
+          updated_at: string
+        }
+        Insert: {
+          base_cost?: number
+          created_at?: string
+          eur_to_sek_rate?: number
+          id?: string
+          lf_finans_percent?: number
+          organization_id: string
+          updated_at?: string
+        }
+        Update: {
+          base_cost?: number
+          created_at?: string
+          eur_to_sek_rate?: number
+          id?: string
+          lf_finans_percent?: number
+          organization_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_commission_settings_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizations: {
         Row: {
           contact_person_name: string | null
@@ -184,6 +281,42 @@ export type Database = {
           price_per_site_visit?: number | null
           price_per_solar_deal?: number | null
           status?: Database["public"]["Enums"]["organization_status"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      products: {
+        Row: {
+          base_price_incl_moms: number
+          capacity_kwh: number | null
+          created_at: string
+          green_tech_deduction_percent: number
+          id: string
+          material_cost_eur: number
+          name: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          base_price_incl_moms: number
+          capacity_kwh?: number | null
+          created_at?: string
+          green_tech_deduction_percent?: number
+          id?: string
+          material_cost_eur: number
+          name: string
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          base_price_incl_moms?: number
+          capacity_kwh?: number | null
+          created_at?: string
+          green_tech_deduction_percent?: number
+          id?: string
+          material_cost_eur?: number
+          name?: string
+          type?: string
           updated_at?: string
         }
         Relationships: []
@@ -226,6 +359,128 @@ export type Database = {
           },
         ]
       }
+      regions: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          postal_prefixes: string[]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          postal_prefixes?: string[]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          postal_prefixes?: string[]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      sales: {
+        Row: {
+          closed_at: string | null
+          closer_commission: number | null
+          closer_id: string
+          closer_notes: string | null
+          contact_id: string
+          created_at: string
+          discount_amount: number | null
+          full_green_deduction: boolean | null
+          id: string
+          invoiceable_amount: number | null
+          num_property_owners: number | null
+          offer_details: string | null
+          opener_commission: number | null
+          organization_id: string
+          partner_notes: string | null
+          pipeline_status: string
+          price_to_customer_incl_moms: number | null
+          product_id: string | null
+          total_order_value: number | null
+          updated_at: string
+        }
+        Insert: {
+          closed_at?: string | null
+          closer_commission?: number | null
+          closer_id: string
+          closer_notes?: string | null
+          contact_id: string
+          created_at?: string
+          discount_amount?: number | null
+          full_green_deduction?: boolean | null
+          id?: string
+          invoiceable_amount?: number | null
+          num_property_owners?: number | null
+          offer_details?: string | null
+          opener_commission?: number | null
+          organization_id: string
+          partner_notes?: string | null
+          pipeline_status?: string
+          price_to_customer_incl_moms?: number | null
+          product_id?: string | null
+          total_order_value?: number | null
+          updated_at?: string
+        }
+        Update: {
+          closed_at?: string | null
+          closer_commission?: number | null
+          closer_id?: string
+          closer_notes?: string | null
+          contact_id?: string
+          created_at?: string
+          discount_amount?: number | null
+          full_green_deduction?: boolean | null
+          id?: string
+          invoiceable_amount?: number | null
+          num_property_owners?: number | null
+          offer_details?: string | null
+          opener_commission?: number | null
+          organization_id?: string
+          partner_notes?: string | null
+          pipeline_status?: string
+          price_to_customer_incl_moms?: number | null
+          product_id?: string | null
+          total_order_value?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_closer_id_fkey"
+            columns: ["closer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
@@ -249,6 +504,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_region_by_postal_code: { Args: { postal: string }; Returns: string }
       get_user_organization: { Args: { _user_id: string }; Returns: string }
       get_user_role: {
         Args: { _user_id: string }
@@ -266,7 +522,7 @@ export type Database = {
       credit_status: "pending" | "approved" | "denied"
       interest_type: "sun" | "battery" | "sun_battery"
       organization_status: "active" | "archived"
-      user_role: "admin" | "teamleader" | "opener" | "organization"
+      user_role: "admin" | "teamleader" | "opener" | "organization" | "closer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -397,7 +653,7 @@ export const Constants = {
       credit_status: ["pending", "approved", "denied"],
       interest_type: ["sun", "battery", "sun_battery"],
       organization_status: ["active", "archived"],
-      user_role: ["admin", "teamleader", "opener", "organization"],
+      user_role: ["admin", "teamleader", "opener", "organization", "closer"],
     },
   },
 } as const
