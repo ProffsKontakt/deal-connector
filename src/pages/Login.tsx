@@ -7,12 +7,13 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Building2, Mail, Lock, ArrowRight, Sparkles } from 'lucide-react';
+import { Building2, Mail, Lock, ArrowRight, Sparkles, User } from 'lucide-react';
 import { z } from 'zod';
 
 const authSchema = z.object({
   email: z.string().email('Ange en giltig e-postadress'),
   password: z.string().min(6, 'Lösenordet måste vara minst 6 tecken'),
+  name: z.string().optional(),
 });
 
 const Login = () => {
@@ -21,6 +22,7 @@ const Login = () => {
   const { toast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (loading) {
@@ -166,6 +168,20 @@ const Login = () => {
               </TabsContent>
 
               <TabsContent value="signup" className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name-signup" className="text-sm font-medium">Namn</Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      id="name-signup"
+                      type="text"
+                      placeholder="Förnamn Efternamn"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="pl-10 h-11"
+                    />
+                  </div>
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="email-signup" className="text-sm font-medium">E-post</Label>
                   <div className="relative">

@@ -71,6 +71,7 @@ const Admin = () => {
   const [orgPrices, setOrgPrices] = useState<Record<string, { solar: string; battery: string; siteVisit: string }>>({});
   const [orgStatusFilter, setOrgStatusFilter] = useState<'active' | 'archived'>('active');
   const [deleteOrg, setDeleteOrg] = useState<{ id: string; name: string } | null>(null);
+  const [deleteUser, setDeleteUser] = useState<{ id: string; email: string } | null>(null);
 
   useEffect(() => {
     if (profile?.role === 'admin') {
@@ -199,6 +200,32 @@ const Admin = () => {
 
     toast.success('🎉 Roll uppdaterad');
     fetchData();
+  };
+
+  const handleDeleteUser = async () => {
+    if (!deleteUser) return;
+
+    try {
+      // Delete from user_roles first
+      await supabase
+        .from('user_roles')
+        .delete()
+        .eq('user_id', deleteUser.id);
+
+      // Delete from profiles
+      const { error } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', deleteUser.id);
+
+      if (error) throw error;
+
+      toast.success('Användare borttagen');
+      setDeleteUser(null);
+      fetchData();
+    } catch (error: any) {
+      toast.error('Kunde inte ta bort användare: ' + error.message);
+    }
   };
 
   const handleCreditAction = async (requestId: string, status: 'approved' | 'denied') => {
@@ -467,11 +494,12 @@ const Admin = () => {
                         <TableHead className="font-semibold">E-post</TableHead>
                         <TableHead className="font-semibold">Namn</TableHead>
                         <TableHead className="font-semibold">Roll</TableHead>
+                        <TableHead className="w-16 font-semibold">Åtgärd</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {profiles.map((user) => (
-                        <TableRow key={user.id}>
+                        <TableRow key={user.id} className="group">
                           <TableCell className="font-medium">{user.email}</TableCell>
                           <TableCell className="text-muted-foreground">
                             {user.full_name || '–'}
@@ -492,6 +520,16 @@ const Admin = () => {
                                 <SelectItem value="organization">Partner</SelectItem>
                               </SelectContent>
                             </Select>
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
+                              onClick={() => setDeleteUser({ id: user.id, email: user.email })}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -593,6 +631,25 @@ const Admin = () => {
           <AlertDialogFooter>
             <AlertDialogCancel>Avbryt</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteOrg} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Ta bort
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete user confirmation dialog */}
+      <AlertDialog open={!!deleteUser} onOpenChange={() => setDeleteUser(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Ta bort användare?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Är du säker på att du vill ta bort <strong>{deleteUser?.email}</strong>? 
+              Detta kan inte ångras.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteUser} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Ta bort
             </AlertDialogAction>
           </AlertDialogFooter>

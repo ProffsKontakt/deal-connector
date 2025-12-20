@@ -14,6 +14,41 @@ export type Database = {
   }
   public: {
     Tables: {
+      closer_commission_types: {
+        Row: {
+          closer_id: string
+          commission_amount: number
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          closer_id: string
+          commission_amount?: number
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          closer_id?: string
+          commission_amount?: number
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "closer_commission_types_closer_id_fkey"
+            columns: ["closer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       closer_regions: {
         Row: {
           closer_id: string
@@ -327,6 +362,7 @@ export type Database = {
           email: string
           full_name: string | null
           id: string
+          opener_commission_per_deal: number | null
           organization_id: string | null
           role: Database["public"]["Enums"]["user_role"]
           updated_at: string
@@ -336,6 +372,7 @@ export type Database = {
           email: string
           full_name?: string | null
           id: string
+          opener_commission_per_deal?: number | null
           organization_id?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
@@ -345,6 +382,7 @@ export type Database = {
           email?: string
           full_name?: string | null
           id?: string
+          opener_commission_per_deal?: number | null
           organization_id?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
