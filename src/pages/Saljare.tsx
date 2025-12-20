@@ -8,10 +8,12 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Users, TrendingUp, Sun, Battery, Calculator, UserCheck, MapPin } from 'lucide-react';
+import { Users, TrendingUp, Sun, Battery, Calculator, UserCheck, MapPin, Wallet, Pencil } from 'lucide-react';
 import { CreateOpenerDialog } from '@/components/saljare/CreateOpenerDialog';
 import { CreateCloserDialog } from '@/components/saljare/CreateCloserDialog';
-
+import { EditOpenerDialog } from '@/components/saljare/EditOpenerDialog';
+import { EditCloserDialog } from '@/components/saljare/EditCloserDialog';
+import { SalariesView } from '@/components/saljare/SalariesView';
 interface OpenerStats {
   id: string;
   email: string;
@@ -46,9 +48,10 @@ const Saljare = () => {
   const [closers, setClosers] = useState<CloserStats[]>([]);
   const [regions, setRegions] = useState<Region[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeMainTab, setActiveMainTab] = useState<'openers' | 'closers'>('openers');
+  const [activeMainTab, setActiveMainTab] = useState<'openers' | 'closers' | 'loner'>('openers');
   const [activeSubTab, setActiveSubTab] = useState<'prestanda' | 'siffror'>('prestanda');
-
+  const [editingOpener, setEditingOpener] = useState<OpenerStats | null>(null);
+  const [editingCloser, setEditingCloser] = useState<CloserStats | null>(null);
   useEffect(() => {
     if (profile?.role === 'admin') {
       fetchAllData();
@@ -212,9 +215,9 @@ const Saljare = () => {
         </p>
       </div>
 
-      {/* Main Tabs - Openers / Closers */}
-      <Tabs value={activeMainTab} onValueChange={(v) => setActiveMainTab(v as 'openers' | 'closers')}>
-        <TabsList className="grid w-full max-w-md grid-cols-2">
+      {/* Main Tabs - Openers / Closers / Löner */}
+      <Tabs value={activeMainTab} onValueChange={(v) => setActiveMainTab(v as 'openers' | 'closers' | 'loner')}>
+        <TabsList className="grid w-full max-w-lg grid-cols-3">
           <TabsTrigger value="openers" className="gap-2">
             <Users className="w-4 h-4" />
             Openers
@@ -222,6 +225,10 @@ const Saljare = () => {
           <TabsTrigger value="closers" className="gap-2">
             <UserCheck className="w-4 h-4" />
             Closers
+          </TabsTrigger>
+          <TabsTrigger value="loner" className="gap-2">
+            <Wallet className="w-4 h-4" />
+            Löner
           </TabsTrigger>
         </TabsList>
 
@@ -299,13 +306,23 @@ const Saljare = () => {
                       </TableHeader>
                       <TableBody>
                         {openers.map((opener) => (
-                          <TableRow key={opener.id} className="hover:bg-muted/30">
+                          <TableRow key={opener.id} className="hover:bg-muted/30 group">
                             <TableCell>
-                              <div>
-                                <p className="font-medium">{opener.full_name || opener.email}</p>
-                                {opener.full_name && (
-                                  <p className="text-sm text-muted-foreground">{opener.email}</p>
-                                )}
+                              <div className="flex items-center gap-2">
+                                <div>
+                                  <p className="font-medium">{opener.full_name || opener.email}</p>
+                                  {opener.full_name && (
+                                    <p className="text-sm text-muted-foreground">{opener.email}</p>
+                                  )}
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="opacity-0 group-hover:opacity-100 transition-opacity h-7 w-7 p-0"
+                                  onClick={() => setEditingOpener(opener)}
+                                >
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </Button>
                               </div>
                             </TableCell>
                             <TableCell className="text-center">
@@ -357,13 +374,23 @@ const Saljare = () => {
                       </TableHeader>
                       <TableBody>
                         {openers.map((opener) => (
-                          <TableRow key={opener.id} className="hover:bg-muted/30">
+                          <TableRow key={opener.id} className="hover:bg-muted/30 group">
                             <TableCell>
-                              <div>
-                                <p className="font-medium">{opener.full_name || opener.email}</p>
-                                {opener.full_name && (
-                                  <p className="text-sm text-muted-foreground">{opener.email}</p>
-                                )}
+                              <div className="flex items-center gap-2">
+                                <div>
+                                  <p className="font-medium">{opener.full_name || opener.email}</p>
+                                  {opener.full_name && (
+                                    <p className="text-sm text-muted-foreground">{opener.email}</p>
+                                  )}
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="opacity-0 group-hover:opacity-100 transition-opacity h-7 w-7 p-0"
+                                  onClick={() => setEditingOpener(opener)}
+                                >
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </Button>
                               </div>
                             </TableCell>
                             <TableCell className="text-center">
@@ -446,13 +473,23 @@ const Saljare = () => {
                       </TableHeader>
                       <TableBody>
                         {closers.map((closer) => (
-                          <TableRow key={closer.id} className="hover:bg-muted/30">
+                          <TableRow key={closer.id} className="hover:bg-muted/30 group">
                             <TableCell>
-                              <div>
-                                <p className="font-medium">{closer.full_name || closer.email}</p>
-                                {closer.full_name && (
-                                  <p className="text-sm text-muted-foreground">{closer.email}</p>
-                                )}
+                              <div className="flex items-center gap-2">
+                                <div>
+                                  <p className="font-medium">{closer.full_name || closer.email}</p>
+                                  {closer.full_name && (
+                                    <p className="text-sm text-muted-foreground">{closer.email}</p>
+                                  )}
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="opacity-0 group-hover:opacity-100 transition-opacity h-7 w-7 p-0"
+                                  onClick={() => setEditingCloser(closer)}
+                                >
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </Button>
                               </div>
                             </TableCell>
                             <TableCell>
@@ -517,13 +554,23 @@ const Saljare = () => {
                       </TableHeader>
                       <TableBody>
                         {closers.map((closer) => (
-                          <TableRow key={closer.id} className="hover:bg-muted/30">
+                          <TableRow key={closer.id} className="hover:bg-muted/30 group">
                             <TableCell>
-                              <div>
-                                <p className="font-medium">{closer.full_name || closer.email}</p>
-                                {closer.full_name && (
-                                  <p className="text-sm text-muted-foreground">{closer.email}</p>
-                                )}
+                              <div className="flex items-center gap-2">
+                                <div>
+                                  <p className="font-medium">{closer.full_name || closer.email}</p>
+                                  {closer.full_name && (
+                                    <p className="text-sm text-muted-foreground">{closer.email}</p>
+                                  )}
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="opacity-0 group-hover:opacity-100 transition-opacity h-7 w-7 p-0"
+                                  onClick={() => setEditingCloser(closer)}
+                                >
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </Button>
                               </div>
                             </TableCell>
                             <TableCell className="text-center">
@@ -545,7 +592,26 @@ const Saljare = () => {
             </Card>
           )}
         </TabsContent>
+
+        {/* Löner Tab Content */}
+        <TabsContent value="loner" className="space-y-6">
+          <SalariesView />
+        </TabsContent>
       </Tabs>
+
+      {/* Edit Dialogs */}
+      <EditOpenerDialog
+        opener={editingOpener}
+        open={!!editingOpener}
+        onOpenChange={(open) => !open && setEditingOpener(null)}
+        onUpdated={fetchAllData}
+      />
+      <EditCloserDialog
+        closer={editingCloser}
+        open={!!editingCloser}
+        onOpenChange={(open) => !open && setEditingCloser(null)}
+        onUpdated={fetchAllData}
+      />
     </div>
   );
 };

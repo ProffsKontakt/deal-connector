@@ -157,6 +157,19 @@ export const DealDetailsDialog = ({ contact, organizations, open, onOpenChange, 
         if (linkError) throw linkError;
       }
 
+      // Update local contact data immediately for instant UI update
+      if (contact) {
+        const updatedOrgs = organizations.filter(org => 
+          editData.selectedOrganizations.includes(org.id)
+        );
+        contact.organizations = updatedOrgs;
+        contact.name = editData.name || null;
+        contact.email = editData.email;
+        contact.phone = editData.phone || null;
+        contact.address = editData.address || null;
+        contact.interest = editData.interest;
+      }
+
       toast({ title: 'Deal uppdaterad' });
       setIsEditing(false);
       onDealUpdated?.();
