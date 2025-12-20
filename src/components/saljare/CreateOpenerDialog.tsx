@@ -18,6 +18,8 @@ export const CreateOpenerDialog = ({ onCreated }: CreateOpenerDialogProps) => {
     email: '',
     password: '',
     full_name: '',
+    commission_per_lead: '200',
+    commission_per_deal: '1000',
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -48,12 +50,14 @@ export const CreateOpenerDialog = ({ onCreated }: CreateOpenerDialogProps) => {
       if (error) throw error;
 
       if (data.user) {
-        // Update the profile with opener role and name
+        // Update the profile with opener role, name and commissions
         await supabase
           .from('profiles')
           .update({ 
             role: 'opener',
             full_name: formData.full_name.trim() || null,
+            opener_commission_per_lead: parseFloat(formData.commission_per_lead) || 200,
+            opener_commission_per_deal: parseFloat(formData.commission_per_deal) || 1000,
           })
           .eq('id', data.user.id);
 
@@ -65,7 +69,7 @@ export const CreateOpenerDialog = ({ onCreated }: CreateOpenerDialogProps) => {
       }
 
       toast.success('Opener skapad');
-      setFormData({ email: '', password: '', full_name: '' });
+      setFormData({ email: '', password: '', full_name: '', commission_per_lead: '200', commission_per_deal: '1000' });
       setOpen(false);
       onCreated();
     } catch (error: any) {
@@ -120,9 +124,28 @@ export const CreateOpenerDialog = ({ onCreated }: CreateOpenerDialogProps) => {
               required
             />
           </div>
-          <p className="text-sm text-muted-foreground">
-            Opener-provision: 1 000 kr per stängd affär
-          </p>
+          <div className="space-y-2">
+            <Label htmlFor="opener-commission-lead">Provision per lead (kr)</Label>
+            <Input
+              id="opener-commission-lead"
+              type="number"
+              value={formData.commission_per_lead}
+              onChange={(e) => setFormData(prev => ({ ...prev, commission_per_lead: e.target.value }))}
+              placeholder="200"
+            />
+            <p className="text-xs text-muted-foreground">Standard: 200 kr per genererat lead</p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="opener-commission-deal">Bonus vid stängd affär (kr)</Label>
+            <Input
+              id="opener-commission-deal"
+              type="number"
+              value={formData.commission_per_deal}
+              onChange={(e) => setFormData(prev => ({ ...prev, commission_per_deal: e.target.value }))}
+              placeholder="1000"
+            />
+            <p className="text-xs text-muted-foreground">Standard: 1 000 kr när deras lead leder till affär</p>
+          </div>
           <div className="flex justify-end gap-2 pt-4">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Avbryt

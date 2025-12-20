@@ -243,6 +243,36 @@ export type Database = {
           },
         ]
       }
+      employer_cost_settings: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          percentage: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          percentage?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          percentage?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       organization_commission_settings: {
         Row: {
           base_cost: number
@@ -358,31 +388,43 @@ export type Database = {
       }
       profiles: {
         Row: {
+          closer_base_commission: number | null
+          closer_company_markup_share: number | null
+          closer_markup_percentage: number | null
           created_at: string
           email: string
           full_name: string | null
           id: string
           opener_commission_per_deal: number | null
+          opener_commission_per_lead: number | null
           organization_id: string | null
           role: Database["public"]["Enums"]["user_role"]
           updated_at: string
         }
         Insert: {
+          closer_base_commission?: number | null
+          closer_company_markup_share?: number | null
+          closer_markup_percentage?: number | null
           created_at?: string
           email: string
           full_name?: string | null
           id: string
           opener_commission_per_deal?: number | null
+          opener_commission_per_lead?: number | null
           organization_id?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
         }
         Update: {
+          closer_base_commission?: number | null
+          closer_company_markup_share?: number | null
+          closer_markup_percentage?: number | null
           created_at?: string
           email?: string
           full_name?: string | null
           id?: string
           opener_commission_per_deal?: number | null
+          opener_commission_per_lead?: number | null
           organization_id?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
