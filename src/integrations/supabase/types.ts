@@ -311,6 +311,50 @@ export type Database = {
           },
         ]
       }
+      organization_price_history: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          effective_from: string
+          effective_until: string | null
+          id: string
+          organization_id: string
+          price_per_battery_deal: number | null
+          price_per_site_visit: number | null
+          price_per_solar_deal: number | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          effective_from?: string
+          effective_until?: string | null
+          id?: string
+          organization_id: string
+          price_per_battery_deal?: number | null
+          price_per_site_visit?: number | null
+          price_per_solar_deal?: number | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          effective_from?: string
+          effective_until?: string | null
+          id?: string
+          organization_id?: string
+          price_per_battery_deal?: number | null
+          price_per_site_visit?: number | null
+          price_per_solar_deal?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_price_history_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizations: {
         Row: {
           contact_person_name: string | null
