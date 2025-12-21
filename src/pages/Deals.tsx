@@ -11,9 +11,22 @@ import { InterestBadge } from '@/components/ui/interest-badge';
 import { EmptyState } from '@/components/ui/empty-state';
 import { CreateDealDialog } from '@/components/deals/CreateDealDialog';
 import { DealDetailsDialog } from '@/components/deals/DealDetailsDialog';
-import { Search, Filter, FileText, TrendingUp, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Search, Filter, FileText, TrendingUp, Calendar, ChevronLeft, ChevronRight, Settings } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, subMonths, addMonths } from 'date-fns';
 import { sv } from 'date-fns/locale';
+
+type ColumnKey = 'email' | 'phone' | 'interest' | 'date' | 'opener' | 'creditStatus';
+
+const ALL_COLUMNS: { key: ColumnKey; label: string }[] = [
+  { key: 'email', label: 'E-post' },
+  { key: 'phone', label: 'Telefon' },
+  { key: 'interest', label: 'Intresse' },
+  { key: 'date', label: 'Datum' },
+  { key: 'opener', label: 'Opener' },
+  { key: 'creditStatus', label: 'Kredit Status' },
+];
 
 interface Contact {
   id: string;
@@ -45,9 +58,16 @@ const Deals = () => {
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(new Date());
+  const [visibleColumns, setVisibleColumns] = useState<ColumnKey[]>(['email', 'phone', 'interest', 'date', 'opener', 'creditStatus']);
 
   const handlePreviousMonth = () => setSelectedMonth(prev => subMonths(prev, 1));
   const handleNextMonth = () => setSelectedMonth(prev => addMonths(prev, 1));
+
+  const toggleColumn = (key: ColumnKey) => {
+    setVisibleColumns(prev => 
+      prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
+    );
+  };
 
   useEffect(() => {
     fetchData();
@@ -234,53 +254,126 @@ const Deals = () => {
             />
           ) : (
             <div className="rounded-xl border border-border overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/30 hover:bg-muted/30">
-                    <TableHead className="font-semibold">E-post</TableHead>
-                    <TableHead className="font-semibold">Telefon</TableHead>
-                    <TableHead className="font-semibold">Intresse</TableHead>
-                    <TableHead className="font-semibold">Datum</TableHead>
-                    <TableHead className="font-semibold">Opener</TableHead>
-                    <TableHead className="font-semibold">Kredit Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredContacts.map((contact) => {
-                    const creditStatus = getLatestCreditStatus(contact);
-                    return (
-                      <TableRow 
-                        key={contact.id} 
-                        className="cursor-pointer transition-colors hover:bg-muted/50 group"
-                        onClick={() => handleContactClick(contact)}
-                      >
-                        <TableCell className="font-medium group-hover:text-primary transition-colors">
-                          {contact.email}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {contact.phone || '–'}
-                        </TableCell>
-                        <TableCell>
-                          <InterestBadge interest={contact.interest} />
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {format(new Date(contact.date_sent), 'dd MMM yyyy', { locale: sv })}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {contact.opener?.full_name || contact.opener?.email || '–'}
-                        </TableCell>
-                        <TableCell>
-                          {creditStatus ? (
-                            <StatusBadge status={creditStatus} />
-                          ) : (
-                            <span className="text-muted-foreground text-sm">–</span>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/30 hover:bg-muted/30">
+                      {visibleColumns.includes('email') && <TableHead className="font-semibold whitespace-nowrap">E-post</TableHead>}
+                      {visibleColumns.includes('phone') && <TableHead className="font-semibold whitespace-nowrap">Telefon</TableHead>}
+                      {visibleColumns.includes('interest') && <TableHead className="font-semibold whitespace-nowrap">Intresse</TableHead>}
+                      {visibleColumns.includes('date') && <TableHead className="font-semibold whitespace-nowrap">Datum</TableHead>}
+                      {visibleColumns.includes('opener') && <TableHead className="font-semibold whitespace-nowrap">Opener</TableHead>}
+                      {visibleColumns.includes('creditStatus') && (
+                        <TableHead className="font-semibold whitespace-nowrap">
+                          <div className="flex items-center justify-between gap-2">
+                            <span>Kredit Status</span>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-6 w-6">
+                                  <Settings className="w-4 h-4" />
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent align="end" className="w-48">
+                                <div className="space-y-2">
+                                  <p className="text-sm font-medium mb-3">Visa kolumner</p>
+                                  {ALL_COLUMNS.map(col => (
+                                    <div key={col.key} className="flex items-center gap-2">
+                                      <Checkbox
+                                        id={`col-${col.key}`}
+                                        checked={visibleColumns.includes(col.key)}
+                                        onCheckedChange={() => toggleColumn(col.key)}
+                                      />
+                                      <label htmlFor={`col-${col.key}`} className="text-sm cursor-pointer">
+                                        {col.label}
+                                      </label>
+                                    </div>
+                                  ))}
+                                </div>
+                              </PopoverContent>
+                            </Popover>
+                          </div>
+                        </TableHead>
+                      )}
+                      {!visibleColumns.includes('creditStatus') && (
+                        <TableHead className="font-semibold whitespace-nowrap w-10">
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-6 w-6">
+                                <Settings className="w-4 h-4" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent align="end" className="w-48">
+                              <div className="space-y-2">
+                                <p className="text-sm font-medium mb-3">Visa kolumner</p>
+                                {ALL_COLUMNS.map(col => (
+                                  <div key={col.key} className="flex items-center gap-2">
+                                    <Checkbox
+                                      id={`col-${col.key}`}
+                                      checked={visibleColumns.includes(col.key)}
+                                      onCheckedChange={() => toggleColumn(col.key)}
+                                    />
+                                    <label htmlFor={`col-${col.key}`} className="text-sm cursor-pointer">
+                                      {col.label}
+                                    </label>
+                                  </div>
+                                ))}
+                              </div>
+                            </PopoverContent>
+                          </Popover>
+                        </TableHead>
+                      )}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredContacts.map((contact) => {
+                      const creditStatus = getLatestCreditStatus(contact);
+                      return (
+                        <TableRow 
+                          key={contact.id} 
+                          className="cursor-pointer transition-colors hover:bg-muted/50 group"
+                          onClick={() => handleContactClick(contact)}
+                        >
+                          {visibleColumns.includes('email') && (
+                            <TableCell className="font-medium group-hover:text-primary transition-colors whitespace-nowrap">
+                              {contact.email}
+                            </TableCell>
                           )}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+                          {visibleColumns.includes('phone') && (
+                            <TableCell className="text-muted-foreground whitespace-nowrap">
+                              {contact.phone || '–'}
+                            </TableCell>
+                          )}
+                          {visibleColumns.includes('interest') && (
+                            <TableCell className="whitespace-nowrap">
+                              <InterestBadge interest={contact.interest} />
+                            </TableCell>
+                          )}
+                          {visibleColumns.includes('date') && (
+                            <TableCell className="text-muted-foreground whitespace-nowrap">
+                              {format(new Date(contact.date_sent), 'dd MMM yyyy', { locale: sv })}
+                            </TableCell>
+                          )}
+                          {visibleColumns.includes('opener') && (
+                            <TableCell className="text-muted-foreground whitespace-nowrap">
+                              {contact.opener?.full_name || contact.opener?.email || '–'}
+                            </TableCell>
+                          )}
+                          {visibleColumns.includes('creditStatus') && (
+                            <TableCell className="whitespace-nowrap">
+                              {creditStatus ? (
+                                <StatusBadge status={creditStatus} />
+                              ) : (
+                                <span className="text-muted-foreground text-sm">–</span>
+                              )}
+                            </TableCell>
+                          )}
+                          {!visibleColumns.includes('creditStatus') && <TableCell />}
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
           )}
         </CardContent>
