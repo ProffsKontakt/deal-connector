@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { InterestBadge } from '@/components/ui/interest-badge';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -13,13 +13,18 @@ import { CreateDealDialog } from '@/components/deals/CreateDealDialog';
 import { DealDetailsDialog } from '@/components/deals/DealDetailsDialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Search, Filter, FileText, TrendingUp, Calendar, ChevronLeft, ChevronRight, Settings } from 'lucide-react';
+import { Search, Filter, FileText, TrendingUp, Calendar, ChevronLeft, ChevronRight, Settings, GripVertical } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, subMonths, addMonths } from 'date-fns';
 import { sv } from 'date-fns/locale';
 
 type ColumnKey = 'email' | 'phone' | 'interest' | 'date' | 'opener' | 'creditStatus';
 
-const ALL_COLUMNS: { key: ColumnKey; label: string }[] = [
+interface ColumnConfig {
+  key: ColumnKey;
+  label: string;
+}
+
+const DEFAULT_COLUMNS: ColumnConfig[] = [
   { key: 'email', label: 'E-post' },
   { key: 'phone', label: 'Telefon' },
   { key: 'interest', label: 'Intresse' },
@@ -45,12 +50,23 @@ interface Contact {
 interface Organization {
   id: string;
   name: string;
+  price_per_solar_deal: number | null;
+  price_per_battery_deal: number | null;
+}
+
+interface PriceHistory {
+  organization_id: string;
+  price_per_solar_deal: number | null;
+  price_per_battery_deal: number | null;
+  effective_from: string;
+  effective_until: string | null;
 }
 
 const Deals = () => {
   const { profile } = useAuth();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [priceHistory, setPriceHistory] = useState<PriceHistory[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterOrg, setFilterOrg] = useState<string>('all');
@@ -58,15 +74,49 @@ const Deals = () => {
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(new Date());
-  const [visibleColumns, setVisibleColumns] = useState<ColumnKey[]>(['email', 'phone', 'interest', 'date', 'opener', 'creditStatus']);
+  
+  // Column management with ordering
+  const [columnOrder, setColumnOrder] = useState<ColumnConfig[]>(DEFAULT_COLUMNS);
+  const [visibleColumns, setVisibleColumns] = useState<Set<ColumnKey>>(new Set(['email', 'phone', 'interest', 'date', 'opener', 'creditStatus']));
+  
+  // Multi-select state
+  const [selectedDeals, setSelectedDeals] = useState<Set<string>>(new Set());
+  
+  // Drag state
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
   const handlePreviousMonth = () => setSelectedMonth(prev => subMonths(prev, 1));
   const handleNextMonth = () => setSelectedMonth(prev => addMonths(prev, 1));
 
   const toggleColumn = (key: ColumnKey) => {
-    setVisibleColumns(prev => 
-      prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
-    );
+    setVisibleColumns(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(key)) {
+        newSet.delete(key);
+      } else {
+        newSet.add(key);
+      }
+      return newSet;
+    });
+  };
+
+  const handleDragStart = (index: number) => {
+    setDraggedIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === index) return;
+    
+    const newOrder = [...columnOrder];
+    const [removed] = newOrder.splice(draggedIndex, 1);
+    newOrder.splice(index, 0, removed);
+    setColumnOrder(newOrder);
+    setDraggedIndex(index);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
   };
 
   useEffect(() => {
@@ -77,10 +127,18 @@ const Deals = () => {
     if (!profile) return;
 
     try {
+      // Fetch organizations with prices
       const { data: orgsData } = await supabase
         .from('organizations')
-        .select('id, name');
+        .select('id, name, price_per_solar_deal, price_per_battery_deal');
       setOrganizations(orgsData || []);
+
+      // Fetch price history for accurate historical calculations
+      const { data: historyData } = await supabase
+        .from('organization_price_history')
+        .select('organization_id, price_per_solar_deal, price_per_battery_deal, effective_from, effective_until')
+        .order('effective_from', { ascending: false });
+      setPriceHistory(historyData || []);
 
       let query = supabase
         .from('contacts')
@@ -132,6 +190,62 @@ const Deals = () => {
     return matchesSearch && matchesOrg && matchesStatus && matchesMonth;
   });
 
+  // Function to get price for a contact at its date from price history
+  const getPriceAtDate = (orgId: string, interest: string, contactDate: Date): number => {
+    // Find the price record that was effective at the contact's date
+    const priceRecord = priceHistory.find(ph => {
+      if (ph.organization_id !== orgId) return false;
+      const effectiveFrom = new Date(ph.effective_from);
+      const effectiveUntil = ph.effective_until ? new Date(ph.effective_until) : null;
+      
+      return contactDate >= effectiveFrom && (!effectiveUntil || contactDate < effectiveUntil);
+    });
+
+    if (!priceRecord) {
+      // Fallback to current org price
+      const org = organizations.find(o => o.id === orgId);
+      if (!org) return 0;
+      
+      if (interest === 'sun') return org.price_per_solar_deal || 0;
+      if (interest === 'battery') return org.price_per_battery_deal || 0;
+      if (interest === 'sun_battery') return (org.price_per_solar_deal || 0) + (org.price_per_battery_deal || 0);
+      return 0;
+    }
+
+    if (interest === 'sun') return priceRecord.price_per_solar_deal || 0;
+    if (interest === 'battery') return priceRecord.price_per_battery_deal || 0;
+    if (interest === 'sun_battery') return (priceRecord.price_per_solar_deal || 0) + (priceRecord.price_per_battery_deal || 0);
+    return 0;
+  };
+
+  // Calculate summary data with proper historical pricing
+  const summaryData = useMemo(() => {
+    let totalValue = 0;
+    const orgValues: Record<string, { name: string; value: number; leadCount: number }> = {};
+
+    filteredContacts.forEach(contact => {
+      const contactDate = new Date(contact.date_sent);
+      
+      contact.organizations?.forEach(org => {
+        const priceForThisLead = getPriceAtDate(org.id, contact.interest, contactDate);
+        totalValue += priceForThisLead;
+        
+        if (!orgValues[org.id]) {
+          orgValues[org.id] = { name: org.name, value: 0, leadCount: 0 };
+        }
+        orgValues[org.id].value += priceForThisLead;
+        orgValues[org.id].leadCount += 1;
+      });
+    });
+
+    return {
+      totalValue,
+      orgValues: Object.values(orgValues),
+      totalLeads: filteredContacts.length,
+      totalOrgLinks: filteredContacts.reduce((sum, c) => sum + (c.organizations?.length || 0), 0)
+    };
+  }, [filteredContacts, priceHistory, organizations]);
+
   const getLatestCreditStatus = (contact: Contact) => {
     if (!contact.credit_requests || contact.credit_requests.length === 0) return null;
     return contact.credit_requests[0].status;
@@ -141,6 +255,31 @@ const Deals = () => {
     setSelectedContact(contact);
     setDetailsOpen(true);
   };
+
+  // Multi-select handlers
+  const handleSelectAll = () => {
+    if (selectedDeals.size === filteredContacts.length) {
+      setSelectedDeals(new Set());
+    } else {
+      setSelectedDeals(new Set(filteredContacts.map(c => c.id)));
+    }
+  };
+
+  const handleSelectDeal = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedDeals(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
+
+  // Get visible columns in order
+  const orderedVisibleColumns = columnOrder.filter(col => visibleColumns.has(col.key));
 
   if (loading) {
     return (
@@ -258,126 +397,178 @@ const Deals = () => {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/30 hover:bg-muted/30">
-                      {visibleColumns.includes('email') && <TableHead className="font-semibold whitespace-nowrap">E-post</TableHead>}
-                      {visibleColumns.includes('phone') && <TableHead className="font-semibold whitespace-nowrap">Telefon</TableHead>}
-                      {visibleColumns.includes('interest') && <TableHead className="font-semibold whitespace-nowrap">Intresse</TableHead>}
-                      {visibleColumns.includes('date') && <TableHead className="font-semibold whitespace-nowrap">Datum</TableHead>}
-                      {visibleColumns.includes('opener') && <TableHead className="font-semibold whitespace-nowrap">Opener</TableHead>}
-                      {visibleColumns.includes('creditStatus') && (
-                        <TableHead className="font-semibold whitespace-nowrap">
-                          <div className="flex items-center justify-between gap-2">
-                            <span>Kredit Status</span>
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-6 w-6">
-                                  <Settings className="w-4 h-4" />
-                                </Button>
-                              </PopoverTrigger>
-                              <PopoverContent align="end" className="w-48">
-                                <div className="space-y-2">
-                                  <p className="text-sm font-medium mb-3">Visa kolumner</p>
-                                  {ALL_COLUMNS.map(col => (
-                                    <div key={col.key} className="flex items-center gap-2">
-                                      <Checkbox
-                                        id={`col-${col.key}`}
-                                        checked={visibleColumns.includes(col.key)}
-                                        onCheckedChange={() => toggleColumn(col.key)}
-                                      />
-                                      <label htmlFor={`col-${col.key}`} className="text-sm cursor-pointer">
-                                        {col.label}
-                                      </label>
-                                    </div>
-                                  ))}
+                      {/* Select all checkbox */}
+                      <TableHead className="w-12">
+                        <Checkbox
+                          checked={selectedDeals.size === filteredContacts.length && filteredContacts.length > 0}
+                          onCheckedChange={handleSelectAll}
+                          aria-label="Markera alla"
+                        />
+                      </TableHead>
+                      {orderedVisibleColumns.map((col) => (
+                        <TableHead key={col.key} className="font-semibold whitespace-nowrap">
+                          {col.label}
+                        </TableHead>
+                      ))}
+                      {/* Always show settings cog */}
+                      <TableHead className="w-12 sticky right-0 bg-muted/30">
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-7 w-7">
+                              <Settings className="w-4 h-4" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent align="end" className="w-56" onInteractOutside={(e) => e.preventDefault()}>
+                            <div className="space-y-1">
+                              <p className="text-sm font-medium mb-3">Visa & ordna kolumner</p>
+                              <p className="text-xs text-muted-foreground mb-3">Dra för att ändra ordning</p>
+                              {columnOrder.map((col, index) => (
+                                <div
+                                  key={col.key}
+                                  draggable
+                                  onDragStart={() => handleDragStart(index)}
+                                  onDragOver={(e) => handleDragOver(e, index)}
+                                  onDragEnd={handleDragEnd}
+                                  className={`flex items-center gap-2 p-2 rounded-md cursor-grab hover:bg-muted/50 ${
+                                    draggedIndex === index ? 'opacity-50 bg-muted' : ''
+                                  }`}
+                                >
+                                  <GripVertical className="w-4 h-4 text-muted-foreground" />
+                                  <Checkbox
+                                    id={`col-${col.key}`}
+                                    checked={visibleColumns.has(col.key)}
+                                    onCheckedChange={() => toggleColumn(col.key)}
+                                  />
+                                  <label htmlFor={`col-${col.key}`} className="text-sm cursor-pointer flex-1">
+                                    {col.label}
+                                  </label>
                                 </div>
-                              </PopoverContent>
-                            </Popover>
-                          </div>
-                        </TableHead>
-                      )}
-                      {!visibleColumns.includes('creditStatus') && (
-                        <TableHead className="font-semibold whitespace-nowrap w-10">
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-6 w-6">
-                                <Settings className="w-4 h-4" />
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent align="end" className="w-48">
-                              <div className="space-y-2">
-                                <p className="text-sm font-medium mb-3">Visa kolumner</p>
-                                {ALL_COLUMNS.map(col => (
-                                  <div key={col.key} className="flex items-center gap-2">
-                                    <Checkbox
-                                      id={`col-${col.key}`}
-                                      checked={visibleColumns.includes(col.key)}
-                                      onCheckedChange={() => toggleColumn(col.key)}
-                                    />
-                                    <label htmlFor={`col-${col.key}`} className="text-sm cursor-pointer">
-                                      {col.label}
-                                    </label>
-                                  </div>
-                                ))}
-                              </div>
-                            </PopoverContent>
-                          </Popover>
-                        </TableHead>
-                      )}
+                              ))}
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredContacts.map((contact) => {
                       const creditStatus = getLatestCreditStatus(contact);
+                      const isSelected = selectedDeals.has(contact.id);
                       return (
                         <TableRow 
                           key={contact.id} 
-                          className="cursor-pointer transition-colors hover:bg-muted/50 group"
+                          className={`cursor-pointer transition-colors hover:bg-muted/50 group ${isSelected ? 'bg-primary/5' : ''}`}
                           onClick={() => handleContactClick(contact)}
                         >
-                          {visibleColumns.includes('email') && (
-                            <TableCell className="font-medium group-hover:text-primary transition-colors whitespace-nowrap">
-                              {contact.email}
-                            </TableCell>
-                          )}
-                          {visibleColumns.includes('phone') && (
-                            <TableCell className="text-muted-foreground whitespace-nowrap">
-                              {contact.phone || '–'}
-                            </TableCell>
-                          )}
-                          {visibleColumns.includes('interest') && (
-                            <TableCell className="whitespace-nowrap">
-                              <InterestBadge interest={contact.interest} />
-                            </TableCell>
-                          )}
-                          {visibleColumns.includes('date') && (
-                            <TableCell className="text-muted-foreground whitespace-nowrap">
-                              {format(new Date(contact.date_sent), 'dd MMM yyyy', { locale: sv })}
-                            </TableCell>
-                          )}
-                          {visibleColumns.includes('opener') && (
-                            <TableCell className="text-muted-foreground whitespace-nowrap">
-                              {contact.opener?.full_name || contact.opener?.email || '–'}
-                            </TableCell>
-                          )}
-                          {visibleColumns.includes('creditStatus') && (
-                            <TableCell className="whitespace-nowrap">
-                              {creditStatus ? (
-                                <StatusBadge status={creditStatus} />
-                              ) : (
-                                <span className="text-muted-foreground text-sm">–</span>
+                          {/* Row checkbox */}
+                          <TableCell onClick={(e) => e.stopPropagation()}>
+                            <Checkbox
+                              checked={isSelected}
+                              onCheckedChange={() => {
+                                setSelectedDeals(prev => {
+                                  const newSet = new Set(prev);
+                                  if (newSet.has(contact.id)) {
+                                    newSet.delete(contact.id);
+                                  } else {
+                                    newSet.add(contact.id);
+                                  }
+                                  return newSet;
+                                });
+                              }}
+                              aria-label={`Markera ${contact.email}`}
+                            />
+                          </TableCell>
+                          {orderedVisibleColumns.map((col) => (
+                            <TableCell key={col.key} className="whitespace-nowrap">
+                              {col.key === 'email' && (
+                                <span className="font-medium group-hover:text-primary transition-colors">
+                                  {contact.email}
+                                </span>
+                              )}
+                              {col.key === 'phone' && (
+                                <span className="text-muted-foreground">{contact.phone || '–'}</span>
+                              )}
+                              {col.key === 'interest' && (
+                                <InterestBadge interest={contact.interest} />
+                              )}
+                              {col.key === 'date' && (
+                                <span className="text-muted-foreground">
+                                  {format(new Date(contact.date_sent), 'dd MMM yyyy', { locale: sv })}
+                                </span>
+                              )}
+                              {col.key === 'opener' && (
+                                <span className="text-muted-foreground">
+                                  {contact.opener?.full_name || contact.opener?.email || '–'}
+                                </span>
+                              )}
+                              {col.key === 'creditStatus' && (
+                                creditStatus ? (
+                                  <StatusBadge status={creditStatus} />
+                                ) : (
+                                  <span className="text-muted-foreground text-sm">–</span>
+                                )
                               )}
                             </TableCell>
-                          )}
-                          {!visibleColumns.includes('creditStatus') && <TableCell />}
+                          ))}
+                          {/* Empty cell for settings column alignment */}
+                          <TableCell className="sticky right-0" />
                         </TableRow>
                       );
                     })}
                   </TableBody>
+                  <TableFooter>
+                    <TableRow className="bg-muted/50 font-medium">
+                      <TableCell colSpan={orderedVisibleColumns.length + 2}>
+                        <div className="flex flex-col gap-2 py-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="font-semibold">Summering</span>
+                            <span className="text-muted-foreground">
+                              {summaryData.totalLeads} leads × {summaryData.totalOrgLinks} partners
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-4 text-sm">
+                            {summaryData.orgValues.map((org) => (
+                              <div key={org.name} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-background border">
+                                <span className="text-muted-foreground">{org.name}:</span>
+                                <span className="font-semibold">{org.leadCount} leads</span>
+                                <span className="text-primary font-bold">
+                                  {org.value.toLocaleString('sv-SE')} kr
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
+                            <span className="text-base">Totalt fakturaunderlag:</span>
+                            <span className="text-lg font-bold text-primary">
+                              {summaryData.totalValue.toLocaleString('sv-SE')} kr
+                            </span>
+                          </div>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  </TableFooter>
                 </Table>
               </div>
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Selection info bar */}
+      {selectedDeals.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+          <div className="flex items-center gap-4 px-6 py-3 rounded-full bg-primary text-primary-foreground shadow-lg">
+            <span className="font-medium">{selectedDeals.size} deals markerade</span>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setSelectedDeals(new Set())}
+            >
+              Avmarkera alla
+            </Button>
+          </div>
+        </div>
+      )}
 
       <DealDetailsDialog
         contact={selectedContact}
