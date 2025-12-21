@@ -311,6 +311,44 @@ export type Database = {
           },
         ]
       }
+      organization_cost_segments: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          is_eur: boolean
+          name: string
+          organization_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          id?: string
+          is_eur?: boolean
+          name: string
+          organization_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          is_eur?: boolean
+          name?: string
+          organization_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_cost_segments_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization_price_history: {
         Row: {
           created_at: string
@@ -357,10 +395,17 @@ export type Database = {
       }
       organizations: {
         Row: {
+          base_cost_for_billing: number | null
+          billing_model: string | null
+          company_markup_share: number | null
           contact_person_name: string | null
           contact_phone: string | null
           created_at: string
+          default_customer_price: number | null
+          eur_to_sek_rate: number | null
           id: string
+          is_sales_consultant: boolean
+          lf_finans_percent: number | null
           name: string
           price_per_battery_deal: number | null
           price_per_site_visit: number | null
@@ -369,10 +414,17 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          base_cost_for_billing?: number | null
+          billing_model?: string | null
+          company_markup_share?: number | null
           contact_person_name?: string | null
           contact_phone?: string | null
           created_at?: string
+          default_customer_price?: number | null
+          eur_to_sek_rate?: number | null
           id?: string
+          is_sales_consultant?: boolean
+          lf_finans_percent?: number | null
           name: string
           price_per_battery_deal?: number | null
           price_per_site_visit?: number | null
@@ -381,10 +433,17 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          base_cost_for_billing?: number | null
+          billing_model?: string | null
+          company_markup_share?: number | null
           contact_person_name?: string | null
           contact_phone?: string | null
           created_at?: string
+          default_customer_price?: number | null
+          eur_to_sek_rate?: number | null
           id?: string
+          is_sales_consultant?: boolean
+          lf_finans_percent?: number | null
           name?: string
           price_per_battery_deal?: number | null
           price_per_site_visit?: number | null
