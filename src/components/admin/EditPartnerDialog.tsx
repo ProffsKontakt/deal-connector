@@ -279,7 +279,7 @@ export const EditPartnerDialog = ({ partner, open, onOpenChange, onUpdated }: Ed
     const greenTechPercent = selectedProduct?.green_tech_deduction_percent || 48.5;
     const materialCostEur = selectedProduct?.material_cost_eur || 0;
     
-    // Calculate green tech deduction
+    // Calculate green tech deduction for CUSTOMER BENEFIT ONLY
     // Max deduction per property owner: 50,000 SEK
     // OR max 48.5% of total price (whichever is lower)
     const maxDeductionPerOwner = 50000;
@@ -304,10 +304,11 @@ export const EditPartnerDialog = ({ partner, open, onOpenChange, onUpdated }: Ed
     // Total costs
     const totalCosts = baseCost + materialCostSek + lfFinansFee + customCostsSek;
     
-    // Price ex moms (divide by 1.25 for 25% VAT)
-    const priceExMoms = priceAfterDeduction / 1.25;
+    // BILLING IS BASED ON FULL PRICE (not after deduction)
+    // The green tech deduction only benefits the customer, not our billing
+    const priceExMoms = totalPriceInclMoms / 1.25;
     
-    // Billable amount = price ex moms - total costs
+    // Billable amount = full price ex moms - total costs
     const billableAmount = priceExMoms - totalCosts;
     
     // Company share of billable
@@ -790,28 +791,12 @@ export const EditPartnerDialog = ({ partner, open, onOpenChange, onUpdated }: Ed
                       </h4>
                       
                       <div className="space-y-2 text-sm">
+                        {/* BILLING CALCULATION - Based on full price */}
+                        <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Fakturering (baserat på fullt pris)</div>
+                        
                         <div className="flex justify-between">
-                          <span>Totalpris inkl. moms</span>
+                          <span>Grundpris inkl. moms (SEK)</span>
                           <span className="font-medium">{formatCurrency(billingBreakdown.totalPriceInclMoms)} kr</span>
-                        </div>
-                        
-                        <div className="flex justify-between text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            Grön Teknik-avdrag
-                            <span className="text-xs">
-                              ({billingBreakdown.deductionLimitedBy === 'owners' 
-                                ? `${formData.preview_property_owners} ägare × 50 000 kr` 
-                                : `${billingBreakdown.greenTechPercent}% av totalpris`})
-                            </span>
-                          </span>
-                          <span className="font-medium text-success">-{formatCurrency(billingBreakdown.greenTechDeduction)} kr</span>
-                        </div>
-                        
-                        <Separator className="my-2" />
-                        
-                        <div className="flex justify-between">
-                          <span>Kund betalar (efter avdrag)</span>
-                          <span className="font-medium">{formatCurrency(billingBreakdown.priceAfterDeduction)} kr</span>
                         </div>
                         
                         <div className="flex justify-between text-muted-foreground">
@@ -873,6 +858,32 @@ export const EditPartnerDialog = ({ partner, open, onOpenChange, onUpdated }: Ed
                         
                         <p className="text-xs text-muted-foreground mt-2 pt-2 border-t border-dashed">
                           Obs: Closerns andel tas från ProffsKontakts del (definieras per closer i Säljare-sektionen)
+                        </p>
+                        
+                        <Separator className="my-2" />
+                        
+                        {/* CUSTOMER BENEFIT - Green tech deduction info */}
+                        <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Kundförmån (Grön Teknik-avdrag)</div>
+                        
+                        <div className="flex justify-between text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            Avdrag för kund
+                            <span className="text-xs">
+                              ({billingBreakdown.deductionLimitedBy === 'owners' 
+                                ? `${formData.preview_property_owners} ägare × 50 000 kr` 
+                                : `${billingBreakdown.greenTechPercent}% av totalpris`})
+                            </span>
+                          </span>
+                          <span className="font-medium text-success">-{formatCurrency(billingBreakdown.greenTechDeduction)} kr</span>
+                        </div>
+                        
+                        <div className="flex justify-between">
+                          <span>Kund betalar (efter avdrag)</span>
+                          <span className="font-medium">{formatCurrency(billingBreakdown.priceAfterDeduction)} kr</span>
+                        </div>
+                        
+                        <p className="text-xs text-muted-foreground mt-1 italic">
+                          Grön Teknik-avdraget påverkar endast vad kunden betalar, inte fakturaunderlaget
                         </p>
                       </div>
                     </div>
