@@ -435,6 +435,42 @@ export type Database = {
           },
         ]
       }
+      organization_regions: {
+        Row: {
+          created_at: string
+          id: string
+          organization_id: string
+          region_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          organization_id: string
+          region_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          organization_id?: string
+          region_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_regions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_regions_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizations: {
         Row: {
           base_cost_for_billing: number | null

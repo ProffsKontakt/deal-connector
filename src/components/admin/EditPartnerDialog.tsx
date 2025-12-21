@@ -8,7 +8,8 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { Plus, Trash2, Building2, Settings2, DollarSign, Percent, Calculator, Package } from 'lucide-react';
+import { Plus, Trash2, Building2, Settings2, DollarSign, Percent, Calculator, Package, MapPin } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface CostSegment {
   id?: string;
@@ -85,9 +86,12 @@ export const EditPartnerDialog = ({ partner, open, onOpenChange, onUpdated }: Ed
     amount: 0,
     is_eur: false,
   });
+  const [regions, setRegions] = useState<{ id: string; name: string }[]>([]);
+  const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
 
   useEffect(() => {
     fetchProducts();
+    fetchRegions();
   }, []);
 
   useEffect(() => {
@@ -112,6 +116,7 @@ export const EditPartnerDialog = ({ partner, open, onOpenChange, onUpdated }: Ed
       });
       fetchCostSegments();
       fetchProductProvisions();
+      fetchOrganizationRegions();
     }
   }, [partner, open]);
 
@@ -127,6 +132,33 @@ export const EditPartnerDialog = ({ partner, open, onOpenChange, onUpdated }: Ed
         setFormData(prev => ({ ...prev, preview_product_id: data[0].id }));
       }
     }
+  };
+
+  const fetchRegions = async () => {
+    const { data } = await supabase
+      .from('regions')
+      .select('id, name')
+      .order('name');
+    if (data) setRegions(data);
+  };
+
+  const fetchOrganizationRegions = async () => {
+    if (!partner) return;
+    const { data } = await supabase
+      .from('organization_regions')
+      .select('region_id')
+      .eq('organization_id', partner.id);
+    if (data) {
+      setSelectedRegions(data.map(r => r.region_id));
+    }
+  };
+
+  const handleRegionToggle = (regionId: string) => {
+    setSelectedRegions(prev => 
+      prev.includes(regionId) 
+        ? prev.filter(id => id !== regionId)
+        : [...prev, regionId]
+    );
   };
 
   const fetchCostSegments = async () => {
@@ -331,6 +363,20 @@ export const EditPartnerDialog = ({ partner, open, onOpenChange, onUpdated }: Ed
 
       if (error) throw error;
 
+      // Update organization regions
+      await supabase
+        .from('organization_regions')
+        .delete()
+        .eq('organization_id', partner.id);
+      
+      if (selectedRegions.length > 0) {
+        const regionsData = selectedRegions.map(regionId => ({
+          organization_id: partner.id,
+          region_id: regionId,
+        }));
+        await supabase.from('organization_regions').insert(regionsData);
+      }
+
       toast.success('Partner uppdaterad');
       onOpenChange(false);
       onUpdated();
@@ -395,6 +441,38 @@ export const EditPartnerDialog = ({ partner, open, onOpenChange, onUpdated }: Ed
                 placeholder="070-123 45 67"
               />
             </div>
+          </div>
+
+          <Separator />
+
+          {/* Geographic Regions */}
+          <div className="space-y-4">
+            <h3 className="font-medium flex items-center gap-2 text-sm text-muted-foreground uppercase tracking-wide">
+              <MapPin className="h-4 w-4" />
+              Geografiska regioner
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Välj vilka regioner denna partner opererar i. Closers kan endast tilldelas regioner som partnern har.
+            </p>
+            
+            {regions.length > 0 ? (
+              <div className="grid grid-cols-2 gap-2">
+                {regions.map((region) => (
+                  <label
+                    key={region.id}
+                    className="flex items-center gap-2 p-2 rounded-lg border bg-card hover:bg-muted/50 cursor-pointer transition-colors"
+                  >
+                    <Checkbox
+                      checked={selectedRegions.includes(region.id)}
+                      onCheckedChange={() => handleRegionToggle(region.id)}
+                    />
+                    <span className="text-sm">{region.name}</span>
+                  </label>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground italic">Inga regioner skapade ännu</p>
+            )}
           </div>
 
           <Separator />
@@ -789,9 +867,13 @@ export const EditPartnerDialog = ({ partner, open, onOpenChange, onUpdated }: Ed
                         </div>
                         
                         <div className="flex justify-between text-muted-foreground">
-                          <span>→ Closers andel ({100 - parseFloat(formData.company_markup_share)}%)</span>
+                          <span>→ Installatörens andel ({100 - parseFloat(formData.company_markup_share)}%)</span>
                           <span>{formatCurrency(billingBreakdown.partnerBillable)} kr</span>
                         </div>
+                        
+                        <p className="text-xs text-muted-foreground mt-2 pt-2 border-t border-dashed">
+                          Obs: Closerns andel tas från ProffsKontakts del (definieras per closer i Säljare-sektionen)
+                        </p>
                       </div>
                     </div>
                   </>
