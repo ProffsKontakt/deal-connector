@@ -218,28 +218,44 @@ const Deals = () => {
     return 0;
   };
 
-  // Calculate summary data with proper historical pricing
+  // Calculate summary data with proper historical pricing, excluding approved credits
   const summaryData = useMemo(() => {
     let totalValue = 0;
-    const orgValues: Record<string, { name: string; value: number; leadCount: number }> = {};
+    let creditedValue = 0;
+    const orgValues: Record<string, { name: string; value: number; leadCount: number; creditedValue: number; creditedLeads: number }> = {};
 
     filteredContacts.forEach(contact => {
       const contactDate = new Date(contact.date_sent);
       
       contact.organizations?.forEach(org => {
         const priceForThisLead = getPriceAtDate(org.id, contact.interest, contactDate);
-        totalValue += priceForThisLead;
+        
+        // Check if there's an approved credit for this org on this contact
+        const hasApprovedCredit = contact.credit_requests?.some(
+          cr => cr.organization_id === org.id && cr.status === 'approved'
+        );
         
         if (!orgValues[org.id]) {
-          orgValues[org.id] = { name: org.name, value: 0, leadCount: 0 };
+          orgValues[org.id] = { name: org.name, value: 0, leadCount: 0, creditedValue: 0, creditedLeads: 0 };
         }
-        orgValues[org.id].value += priceForThisLead;
+        
+        if (hasApprovedCredit) {
+          // This lead was credited - don't count towards invoice
+          creditedValue += priceForThisLead;
+          orgValues[org.id].creditedValue += priceForThisLead;
+          orgValues[org.id].creditedLeads += 1;
+        } else {
+          // Normal lead - counts towards invoice
+          totalValue += priceForThisLead;
+          orgValues[org.id].value += priceForThisLead;
+        }
         orgValues[org.id].leadCount += 1;
       });
     });
 
     return {
       totalValue,
+      creditedValue,
       orgValues: Object.values(orgValues),
       totalLeads: filteredContacts.length,
       totalOrgLinks: filteredContacts.reduce((sum, c) => sum + (c.organizations?.length || 0), 0)
@@ -528,15 +544,30 @@ const Deals = () => {
                           </div>
                           <div className="flex flex-wrap gap-4 text-sm">
                             {summaryData.orgValues.map((org) => (
-                              <div key={org.name} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-background border">
-                                <span className="text-muted-foreground">{org.name}:</span>
-                                <span className="font-semibold">{org.leadCount} leads</span>
+                              <div key={org.name} className="flex flex-col gap-1 px-3 py-2 rounded-lg bg-background border">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-muted-foreground font-medium">{org.name}</span>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <span className="text-xs text-muted-foreground">{org.leadCount} leads</span>
+                                  {org.creditedLeads > 0 && (
+                                    <span className="text-xs text-amber-600">
+                                      ({org.creditedLeads} krediterade: -{org.creditedValue.toLocaleString('sv-SE')} kr)
+                                    </span>
+                                  )}
+                                </div>
                                 <span className="text-primary font-bold">
                                   {org.value.toLocaleString('sv-SE')} kr
                                 </span>
                               </div>
                             ))}
                           </div>
+                          {summaryData.creditedValue > 0 && (
+                            <div className="flex items-center justify-end gap-2 text-sm text-amber-600">
+                              <span>Totalt krediterat:</span>
+                              <span className="font-semibold">-{summaryData.creditedValue.toLocaleString('sv-SE')} kr</span>
+                            </div>
+                          )}
                           <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
                             <span className="text-base">Totalt fakturaunderlag:</span>
                             <span className="text-lg font-bold text-primary">
