@@ -393,6 +393,48 @@ export type Database = {
           },
         ]
       }
+      organization_product_provisions: {
+        Row: {
+          created_at: string
+          id: string
+          organization_id: string
+          product_id: string
+          provision_amount: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          organization_id: string
+          product_id: string
+          provision_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          organization_id?: string
+          product_id?: string
+          provision_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_product_provisions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_product_provisions_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizations: {
         Row: {
           base_cost_for_billing: number | null
@@ -574,6 +616,9 @@ export type Database = {
           closer_notes: string | null
           contact_id: string
           created_at: string
+          custom_product_material_cost_eur: number | null
+          custom_product_name: string | null
+          custom_product_price: number | null
           discount_amount: number | null
           full_green_deduction: boolean | null
           id: string
@@ -596,6 +641,9 @@ export type Database = {
           closer_notes?: string | null
           contact_id: string
           created_at?: string
+          custom_product_material_cost_eur?: number | null
+          custom_product_name?: string | null
+          custom_product_price?: number | null
           discount_amount?: number | null
           full_green_deduction?: boolean | null
           id?: string
@@ -618,6 +666,9 @@ export type Database = {
           closer_notes?: string | null
           contact_id?: string
           created_at?: string
+          custom_product_material_cost_eur?: number | null
+          custom_product_name?: string | null
+          custom_product_price?: number | null
           discount_amount?: number | null
           full_green_deduction?: boolean | null
           id?: string

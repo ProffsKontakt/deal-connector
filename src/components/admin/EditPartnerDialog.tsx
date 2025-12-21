@@ -27,6 +27,11 @@ interface Product {
   capacity_kwh: number | null;
 }
 
+interface ProductProvision {
+  product_id: string;
+  provision_amount: number;
+}
+
 interface Partner {
   id: string;
   name: string;
@@ -54,6 +59,7 @@ interface EditPartnerDialogProps {
 export const EditPartnerDialog = ({ partner, open, onOpenChange, onUpdated }: EditPartnerDialogProps) => {
   const [loading, setLoading] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
+  const [productProvisions, setProductProvisions] = useState<Record<string, number>>({});
   const [formData, setFormData] = useState({
     name: '',
     contact_person_name: '',
@@ -105,6 +111,7 @@ export const EditPartnerDialog = ({ partner, open, onOpenChange, onUpdated }: Ed
         preview_product_id: '',
       });
       fetchCostSegments();
+      fetchProductProvisions();
     }
   }, [partner, open]);
 
@@ -138,6 +145,45 @@ export const EditPartnerDialog = ({ partner, open, onOpenChange, onUpdated }: Ed
         amount: cs.amount,
         is_eur: cs.is_eur,
       })));
+    }
+  };
+
+  const fetchProductProvisions = async () => {
+    if (!partner) return;
+    
+    const { data } = await supabase
+      .from('organization_product_provisions')
+      .select('product_id, provision_amount')
+      .eq('organization_id', partner.id);
+    
+    if (data) {
+      const provisions: Record<string, number> = {};
+      data.forEach(p => {
+        provisions[p.product_id] = p.provision_amount;
+      });
+      setProductProvisions(provisions);
+    }
+  };
+
+  const updateProductProvision = async (productId: string, amount: number) => {
+    if (!partner) return;
+    
+    // Update local state immediately for responsive UI
+    setProductProvisions(prev => ({ ...prev, [productId]: amount }));
+    
+    // Upsert to database
+    const { error } = await supabase
+      .from('organization_product_provisions')
+      .upsert({
+        organization_id: partner.id,
+        product_id: productId,
+        provision_amount: amount,
+      }, {
+        onConflict: 'organization_id,product_id',
+      });
+
+    if (error) {
+      toast.error('Kunde inte uppdatera provision');
     }
   };
 
@@ -471,20 +517,21 @@ export const EditPartnerDialog = ({ partner, open, onOpenChange, onUpdated }: Ed
                       <div className="space-y-3">
                         {products.map((product) => (
                           <div key={product.id} className="flex items-center justify-between p-3 bg-background rounded-lg border">
-                            <div>
+                            <div className="flex-1">
                               <p className="font-medium">{product.name}</p>
                               <p className="text-xs text-muted-foreground">
                                 {product.type === 'battery' ? 'Batteri' : 'Sol'} • Grundpris: {formatCurrency(product.base_price_incl_moms)} kr
                               </p>
                             </div>
-                            <div className="text-right">
-                              <p className="text-sm text-muted-foreground">Provision</p>
-                              <p className="font-medium">
-                                {product.type === 'battery' 
-                                  ? (formData.price_per_battery_deal ? `${formatCurrency(parseFloat(formData.price_per_battery_deal))} kr` : '–')
-                                  : (formData.price_per_solar_deal ? `${formatCurrency(parseFloat(formData.price_per_solar_deal))} kr` : '–')
-                                }
-                              </p>
+                            <div className="flex items-center gap-2">
+                              <Label className="text-sm text-muted-foreground whitespace-nowrap">Provision (kr)</Label>
+                              <Input
+                                type="number"
+                                className="w-28"
+                                value={productProvisions[product.id] ?? ''}
+                                onChange={(e) => updateProductProvision(product.id, parseFloat(e.target.value) || 0)}
+                                placeholder="0"
+                              />
                             </div>
                           </div>
                         ))}
