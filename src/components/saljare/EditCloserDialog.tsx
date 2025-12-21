@@ -48,6 +48,7 @@ export const EditCloserDialog = ({ closer, open, onOpenChange, onUpdated }: Edit
   const [selectedRegions, setSelectedRegions] = useState<{ regionId: string; organizationId: string }[]>([]);
   const [commissionTypes, setCommissionTypes] = useState<CommissionType[]>([]);
   const [newCommissionType, setNewCommissionType] = useState({ name: '', commission_amount: '8000' });
+  const [organizationRegions, setOrganizationRegions] = useState<{ organization_id: string; region_id: string }[]>([]);
 
   useEffect(() => {
     if (closer && open) {
@@ -58,12 +59,13 @@ export const EditCloserDialog = ({ closer, open, onOpenChange, onUpdated }: Edit
   const fetchData = async () => {
     if (!closer) return;
 
-    const [regionsRes, orgsRes, profileRes, closerRegionsRes, commissionTypesRes] = await Promise.all([
+    const [regionsRes, orgsRes, profileRes, closerRegionsRes, commissionTypesRes, orgRegionsRes] = await Promise.all([
       supabase.from('regions').select('id, name').order('name'),
       supabase.from('organizations').select('id, name').eq('status', 'active').order('name'),
       supabase.from('profiles').select('full_name, closer_base_commission, closer_markup_percentage, closer_company_markup_share').eq('id', closer.id).single(),
       supabase.from('closer_regions').select('region_id, organization_id').eq('closer_id', closer.id),
       supabase.from('closer_commission_types').select('id, name, commission_amount').eq('closer_id', closer.id),
+      supabase.from('organization_regions').select('organization_id, region_id'),
     ]);
 
     if (regionsRes.data) setRegions(regionsRes.data);
@@ -87,6 +89,10 @@ export const EditCloserDialog = ({ closer, open, onOpenChange, onUpdated }: Edit
     if (commissionTypesRes.data) {
       setCommissionTypes(commissionTypesRes.data);
     }
+    // Store organization regions to filter valid combinations
+    if (orgRegionsRes.data) {
+      setOrganizationRegions(orgRegionsRes.data);
+    }
   };
 
   const handleRegionToggle = (regionId: string, organizationId: string) => {
@@ -107,6 +113,21 @@ export const EditCloserDialog = ({ closer, open, onOpenChange, onUpdated }: Edit
     return selectedRegions.some(
       sr => sr.regionId === regionId && sr.organizationId === organizationId
     );
+  };
+
+  // Check if an organization has a specific region assigned
+  const orgHasRegion = (organizationId: string, regionId: string) => {
+    return organizationRegions.some(
+      or => or.organization_id === organizationId && or.region_id === regionId
+    );
+  };
+
+  // Get organizations that have a specific region
+  const getOrgsForRegion = (regionId: string) => {
+    const orgIds = organizationRegions
+      .filter(or => or.region_id === regionId)
+      .map(or => or.organization_id);
+    return organizations.filter(org => orgIds.includes(org.id));
   };
 
   const addCommissionType = async () => {
@@ -310,32 +331,45 @@ export const EditCloserDialog = ({ closer, open, onOpenChange, onUpdated }: Edit
           {/* Regions */}
           <div className="space-y-3">
             <Label>Tilldela regioner & organisationer</Label>
-            {regions.length === 0 || organizations.length === 0 ? (
+            <p className="text-xs text-muted-foreground">
+              Endast organisationer som har regionen tilldelad visas.
+            </p>
+            {regions.length === 0 ? (
               <p className="text-sm text-muted-foreground italic">
-                {regions.length === 0 ? 'Inga regioner skapade ännu. ' : ''}
-                {organizations.length === 0 ? 'Inga aktiva organisationer.' : ''}
+                Inga regioner skapade ännu.
               </p>
             ) : (
               <div className="border rounded-lg divide-y max-h-48 overflow-y-auto">
-                {regions.map((region) => (
-                  <div key={region.id} className="p-3">
-                    <p className="font-medium mb-2">{region.name}</p>
-                    <div className="flex flex-wrap gap-3">
-                      {organizations.map((org) => (
-                        <label
-                          key={`${region.id}-${org.id}`}
-                          className="flex items-center gap-2 cursor-pointer"
-                        >
-                          <Checkbox
-                            checked={isRegionSelected(region.id, org.id)}
-                            onCheckedChange={() => handleRegionToggle(region.id, org.id)}
-                          />
-                          <span className="text-sm">{org.name}</span>
-                        </label>
-                      ))}
+                {regions.map((region) => {
+                  const orgsForRegion = getOrgsForRegion(region.id);
+                  if (orgsForRegion.length === 0) {
+                    return (
+                      <div key={region.id} className="p-3 opacity-50">
+                        <p className="font-medium mb-1">{region.name}</p>
+                        <p className="text-xs text-muted-foreground italic">Ingen organisation har denna region</p>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div key={region.id} className="p-3">
+                      <p className="font-medium mb-2">{region.name}</p>
+                      <div className="flex flex-wrap gap-3">
+                        {orgsForRegion.map((org) => (
+                          <label
+                            key={`${region.id}-${org.id}`}
+                            className="flex items-center gap-2 cursor-pointer"
+                          >
+                            <Checkbox
+                              checked={isRegionSelected(region.id, org.id)}
+                              onCheckedChange={() => handleRegionToggle(region.id, org.id)}
+                            />
+                            <span className="text-sm">{org.name}</span>
+                          </label>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
