@@ -274,18 +274,27 @@ export const EditPartnerDialog = ({ partner, open, onOpenChange, onUpdated }: Ed
     const lfFinansPercent = parseFloat(formData.lf_finans_percent) || 3;
     const baseCost = parseFloat(formData.base_cost_for_billing) || 23000;
     const companyShare = parseFloat(formData.company_markup_share) || 70;
+    const billingModel = formData.billing_model;
     
     const selectedProduct = products.find(p => p.id === formData.preview_product_id);
     const greenTechPercent = selectedProduct?.green_tech_deduction_percent || 48.5;
     const materialCostEur = selectedProduct?.material_cost_eur || 0;
     
-    // Calculate green tech deduction for CUSTOMER BENEFIT ONLY
+    // Calculate green tech deduction for CUSTOMER BENEFIT
     // Max deduction per property owner: 50,000 SEK
     // OR max 48.5% of total price (whichever is lower)
     const maxDeductionPerOwner = 50000;
     const totalMaxDeductionByOwners = propertyOwners * maxDeductionPerOwner;
     const maxDeductionByPercent = totalPriceInclMoms * (greenTechPercent / 100);
+    
+    // Green tech with 1 owner (baseline)
+    const baselineGreenTech = Math.min(maxDeductionPerOwner, maxDeductionByPercent);
+    // Green tech with actual owners
     const greenTechDeduction = Math.min(totalMaxDeductionByOwners, maxDeductionByPercent);
+    
+    // Extra deduction from additional owners - this adds to our billable amount
+    // because we still bill for full price but customer pays less
+    const extraDeductionFromOwners = greenTechDeduction - baselineGreenTech;
     
     // Price after green tech deduction (what customer actually pays)
     const priceAfterDeduction = totalPriceInclMoms - greenTechDeduction;
@@ -308,12 +317,25 @@ export const EditPartnerDialog = ({ partner, open, onOpenChange, onUpdated }: Ed
     // The green tech deduction only benefits the customer, not our billing
     const priceExMoms = totalPriceInclMoms / 1.25;
     
-    // Billable amount = full price ex moms - total costs
-    const billableAmount = priceExMoms - totalCosts;
+    // Base billable = price ex moms - costs
+    const baseBillableAmount = priceExMoms - totalCosts;
     
-    // Company share of billable
-    const companyBillable = billableAmount * (companyShare / 100);
-    const partnerBillable = billableAmount * ((100 - companyShare) / 100);
+    // Extra from additional property owners (deduction goes to cover more of customer price)
+    // The extra deduction from owners is already included in priceExMoms since we bill full price
+    // So we add the ex-moms portion of the extra deduction
+    const extraBillableFromOwners = extraDeductionFromOwners / 1.25;
+    
+    // Total billable = base + extra from owners
+    const billableAmount = baseBillableAmount + extraBillableFromOwners;
+    
+    // For "Allt över" model: ALL påslag goes to ProffsKontakt (no split with installer)
+    // For "Satt provision" model: påslag is split between ProffsKontakt and installer
+    const companyBillable = billingModel === 'above_cost' 
+      ? billableAmount  // ProffsKontakt gets all of it
+      : billableAmount * (companyShare / 100);  // Split only for fixed model
+    const partnerBillable = billingModel === 'above_cost'
+      ? 0  // Installer gets nothing from påslag in "Allt över"
+      : billableAmount * ((100 - companyShare) / 100);
     
     return {
       totalPriceInclMoms,
@@ -330,10 +352,13 @@ export const EditPartnerDialog = ({ partner, open, onOpenChange, onUpdated }: Ed
       lfFinansFee,
       customCostsSek,
       totalCosts,
+      baseBillableAmount,
+      extraBillableFromOwners,
       billableAmount,
       companyShare,
       companyBillable,
       partnerBillable,
+      billingModel,
     };
   }, [formData, products, costSegments]);
 
@@ -839,25 +864,32 @@ export const EditPartnerDialog = ({ partner, open, onOpenChange, onUpdated }: Ed
                         
                         <Separator className="my-2" />
                         
-                        <div className="flex justify-between text-lg font-bold">
+                        <div className="flex justify-between text-muted-foreground">
+                          <span>Basbelopp (pris ex moms − kostnader)</span>
+                          <span>{formatCurrency(billingBreakdown.baseBillableAmount)} kr</span>
+                        </div>
+                        
+                        {billingBreakdown.extraBillableFromOwners > 0 && (
+                          <div className="flex justify-between text-muted-foreground">
+                            <span>+ Extra från {formData.preview_property_owners} fastighetsägare</span>
+                            <span className="text-success">+{formatCurrency(billingBreakdown.extraBillableFromOwners)} kr</span>
+                          </div>
+                        )}
+                        
+                        <div className="flex justify-between text-lg font-bold pt-1 border-t">
                           <span>Fakturaunderlag (påslag)</span>
                           <span className={billingBreakdown.billableAmount >= 0 ? 'text-success' : 'text-destructive'}>
                             {formatCurrency(billingBreakdown.billableAmount)} kr
                           </span>
                         </div>
                         
-                        <div className="flex justify-between text-muted-foreground">
-                          <span>→ ProffsKontakts andel ({formData.company_markup_share}%)</span>
-                          <span className="font-medium text-primary">{formatCurrency(billingBreakdown.companyBillable)} kr</span>
-                        </div>
-                        
-                        <div className="flex justify-between text-muted-foreground">
-                          <span>→ Installatörens andel ({100 - parseFloat(formData.company_markup_share)}%)</span>
-                          <span>{formatCurrency(billingBreakdown.partnerBillable)} kr</span>
+                        <div className="flex justify-between text-primary font-medium">
+                          <span>→ ProffsKontakt fakturerar</span>
+                          <span>{formatCurrency(billingBreakdown.companyBillable)} kr</span>
                         </div>
                         
                         <p className="text-xs text-muted-foreground mt-2 pt-2 border-t border-dashed">
-                          Obs: Closerns andel tas från ProffsKontakts del (definieras per closer i Säljare-sektionen)
+                          I "Allt över"-modellen går hela påslaget till ProffsKontakt. Closerns andel definieras per closer i Säljare-sektionen.
                         </p>
                         
                         <Separator className="my-2" />
