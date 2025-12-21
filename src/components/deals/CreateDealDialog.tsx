@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -19,11 +18,18 @@ interface Organization {
   name: string;
 }
 
+interface Opener {
+  id: string;
+  full_name: string | null;
+  email: string;
+}
+
 const dealSchema = z.object({
   email: z.string().trim().email({ message: "Ogiltig e-postadress" }).max(255),
   phone: z.string().trim().max(50).optional(),
   address: z.string().trim().max(500).optional(),
   interest: z.enum(['sun', 'battery', 'sun_battery']),
+  opener_id: z.string().min(1, { message: "Välj en opener" }),
   organizations: z.array(z.string()).min(1, { message: "Välj minst en organisation" })
 });
 
@@ -32,30 +38,34 @@ interface CreateDealDialogProps {
 }
 
 export const CreateDealDialog = ({ onDealCreated }: CreateDealDialogProps) => {
-  const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [openers, setOpeners] = useState<Opener[]>([]);
   const [formData, setFormData] = useState({
     email: '',
     phone: '',
     address: '',
     interest: 'sun' as InterestType,
+    opener_id: '',
     selectedOrgs: [] as string[]
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    const fetchOrganizations = async () => {
-      const { data } = await supabase.from('organizations').select('id, name').order('name');
-      if (data) setOrganizations(data);
+    const fetchData = async () => {
+      const [orgsResult, openersResult] = await Promise.all([
+        supabase.from('organizations').select('id, name').order('name'),
+        supabase.from('profiles').select('id, full_name, email').in('role', ['opener', 'teamleader'])
+      ]);
+      if (orgsResult.data) setOrganizations(orgsResult.data);
+      if (openersResult.data) setOpeners(openersResult.data);
     };
-    fetchOrganizations();
+    fetchData();
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
 
     setErrors({});
 
@@ -64,6 +74,7 @@ export const CreateDealDialog = ({ onDealCreated }: CreateDealDialogProps) => {
       phone: formData.phone || undefined,
       address: formData.address || undefined,
       interest: formData.interest,
+      opener_id: formData.opener_id,
       organizations: formData.selectedOrgs
     });
 
@@ -81,7 +92,7 @@ export const CreateDealDialog = ({ onDealCreated }: CreateDealDialogProps) => {
     setLoading(true);
 
     try {
-      // Create contact
+      // Create contact with selected opener
       const { data: contact, error: contactError } = await supabase
         .from('contacts')
         .insert({
@@ -89,7 +100,7 @@ export const CreateDealDialog = ({ onDealCreated }: CreateDealDialogProps) => {
           phone: formData.phone.trim() || null,
           address: formData.address.trim() || null,
           interest: formData.interest,
-          opener_id: user.id
+          opener_id: formData.opener_id
         })
         .select()
         .single();
@@ -115,6 +126,7 @@ export const CreateDealDialog = ({ onDealCreated }: CreateDealDialogProps) => {
         phone: '',
         address: '',
         interest: 'sun',
+        opener_id: '',
         selectedOrgs: []
       });
       onDealCreated();
@@ -196,6 +208,26 @@ export const CreateDealDialog = ({ onDealCreated }: CreateDealDialogProps) => {
                 <SelectItem value="sun_battery">Sol + Batteri</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="opener">Opener *</Label>
+            <Select
+              value={formData.opener_id}
+              onValueChange={(value) => setFormData(prev => ({ ...prev, opener_id: value }))}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Välj opener" />
+              </SelectTrigger>
+              <SelectContent>
+                {openers.map((opener) => (
+                  <SelectItem key={opener.id} value={opener.id}>
+                    {opener.full_name || opener.email}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {errors.opener_id && <p className="text-sm text-destructive">{errors.opener_id}</p>}
           </div>
 
           <div className="space-y-2">
