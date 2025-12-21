@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -8,13 +8,23 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { Plus, Trash2, Building2, Settings2, DollarSign, Percent } from 'lucide-react';
+import { Plus, Trash2, Building2, Settings2, DollarSign, Percent, Calculator, Package } from 'lucide-react';
 
 interface CostSegment {
   id?: string;
   name: string;
   amount: number;
   is_eur: boolean;
+}
+
+interface Product {
+  id: string;
+  name: string;
+  type: string;
+  base_price_incl_moms: number;
+  material_cost_eur: number;
+  green_tech_deduction_percent: number;
+  capacity_kwh: number | null;
 }
 
 interface Partner {
@@ -43,6 +53,7 @@ interface EditPartnerDialogProps {
 
 export const EditPartnerDialog = ({ partner, open, onOpenChange, onUpdated }: EditPartnerDialogProps) => {
   const [loading, setLoading] = useState(false);
+  const [products, setProducts] = useState<Product[]>([]);
   const [formData, setFormData] = useState({
     name: '',
     contact_person_name: '',
@@ -57,6 +68,10 @@ export const EditPartnerDialog = ({ partner, open, onOpenChange, onUpdated }: Ed
     eur_to_sek_rate: '11',
     lf_finans_percent: '3',
     default_customer_price: '78000',
+    // For "Allt över" calculation preview
+    preview_total_price: '78000',
+    preview_property_owners: '1',
+    preview_product_id: '',
   });
   const [costSegments, setCostSegments] = useState<CostSegment[]>([]);
   const [newCostSegment, setNewCostSegment] = useState<CostSegment>({
@@ -64,6 +79,10 @@ export const EditPartnerDialog = ({ partner, open, onOpenChange, onUpdated }: Ed
     amount: 0,
     is_eur: false,
   });
+
+  useEffect(() => {
+    fetchProducts();
+  }, []);
 
   useEffect(() => {
     if (partner && open) {
@@ -81,10 +100,27 @@ export const EditPartnerDialog = ({ partner, open, onOpenChange, onUpdated }: Ed
         eur_to_sek_rate: (partner.eur_to_sek_rate ?? 11).toString(),
         lf_finans_percent: (partner.lf_finans_percent ?? 3).toString(),
         default_customer_price: (partner.default_customer_price ?? 78000).toString(),
+        preview_total_price: (partner.default_customer_price ?? 78000).toString(),
+        preview_property_owners: '1',
+        preview_product_id: '',
       });
       fetchCostSegments();
     }
   }, [partner, open]);
+
+  const fetchProducts = async () => {
+    const { data } = await supabase
+      .from('products')
+      .select('*')
+      .order('name');
+    
+    if (data) {
+      setProducts(data);
+      if (data.length > 0 && !formData.preview_product_id) {
+        setFormData(prev => ({ ...prev, preview_product_id: data[0].id }));
+      }
+    }
+  };
 
   const fetchCostSegments = async () => {
     if (!partner) return;
@@ -152,6 +188,76 @@ export const EditPartnerDialog = ({ partner, open, onOpenChange, onUpdated }: Ed
     toast.success('Kostnadssegment borttaget');
   };
 
+  // Calculate the "Allt över" billing breakdown
+  const billingBreakdown = useMemo(() => {
+    const totalPriceInclMoms = parseFloat(formData.preview_total_price) || 0;
+    const propertyOwners = parseInt(formData.preview_property_owners) || 1;
+    const eurRate = parseFloat(formData.eur_to_sek_rate) || 11;
+    const lfFinansPercent = parseFloat(formData.lf_finans_percent) || 3;
+    const baseCost = parseFloat(formData.base_cost_for_billing) || 23000;
+    const companyShare = parseFloat(formData.company_markup_share) || 70;
+    
+    const selectedProduct = products.find(p => p.id === formData.preview_product_id);
+    const greenTechPercent = selectedProduct?.green_tech_deduction_percent || 48.5;
+    const materialCostEur = selectedProduct?.material_cost_eur || 0;
+    
+    // Calculate green tech deduction
+    // Max deduction per property owner: 50,000 SEK
+    // OR max 48.5% of total price (whichever is lower)
+    const maxDeductionPerOwner = 50000;
+    const totalMaxDeductionByOwners = propertyOwners * maxDeductionPerOwner;
+    const maxDeductionByPercent = totalPriceInclMoms * (greenTechPercent / 100);
+    const greenTechDeduction = Math.min(totalMaxDeductionByOwners, maxDeductionByPercent);
+    
+    // Price after green tech deduction (what customer actually pays)
+    const priceAfterDeduction = totalPriceInclMoms - greenTechDeduction;
+    
+    // Material cost in SEK (only for Emaldo products with EUR cost)
+    const materialCostSek = materialCostEur > 0 ? materialCostEur * eurRate : 0;
+    
+    // LF Finans fee (percentage of total price)
+    const lfFinansFee = totalPriceInclMoms * (lfFinansPercent / 100);
+    
+    // Custom cost segments in SEK
+    const customCostsSek = costSegments.reduce((sum, segment) => {
+      return sum + (segment.is_eur ? segment.amount * eurRate : segment.amount);
+    }, 0);
+    
+    // Total costs
+    const totalCosts = baseCost + materialCostSek + lfFinansFee + customCostsSek;
+    
+    // Price ex moms (divide by 1.25 for 25% VAT)
+    const priceExMoms = priceAfterDeduction / 1.25;
+    
+    // Billable amount = price ex moms - total costs
+    const billableAmount = priceExMoms - totalCosts;
+    
+    // Company share of billable
+    const companyBillable = billableAmount * (companyShare / 100);
+    const partnerBillable = billableAmount * ((100 - companyShare) / 100);
+    
+    return {
+      totalPriceInclMoms,
+      greenTechDeduction,
+      greenTechPercent,
+      maxDeductionByOwners: totalMaxDeductionByOwners,
+      maxDeductionByPercent,
+      deductionLimitedBy: totalMaxDeductionByOwners < maxDeductionByPercent ? 'owners' : 'percent',
+      priceAfterDeduction,
+      priceExMoms,
+      baseCost,
+      materialCostSek,
+      materialCostEur,
+      lfFinansFee,
+      customCostsSek,
+      totalCosts,
+      billableAmount,
+      companyShare,
+      companyBillable,
+      partnerBillable,
+    };
+  }, [formData, products, costSegments]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!partner) return;
@@ -191,9 +297,13 @@ export const EditPartnerDialog = ({ partner, open, onOpenChange, onUpdated }: Ed
 
   if (!partner) return null;
 
+  const formatCurrency = (value: number) => {
+    return value.toLocaleString('sv-SE', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Building2 className="h-5 w-5" />
@@ -324,7 +434,7 @@ export const EditPartnerDialog = ({ partner, open, onOpenChange, onUpdated }: Ed
                   <p className="text-xs text-muted-foreground">
                     {formData.billing_model === 'above_cost' 
                       ? '"Allt över" subtraherar alla kostnader från ordervärdet och fakturerar resten'
-                      : '"Satt provision" använder en fast provision per affär'}
+                      : '"Satt provision" använder en fast provision per produkttyp'}
                   </p>
                 </div>
 
@@ -346,58 +456,141 @@ export const EditPartnerDialog = ({ partner, open, onOpenChange, onUpdated }: Ed
                   </p>
                 </div>
 
+                {/* Fixed provision - product-based */}
+                {formData.billing_model === 'fixed' && (
+                  <div className="space-y-4 p-4 bg-muted/30 rounded-lg">
+                    <h4 className="font-medium flex items-center gap-2 text-sm">
+                      <Package className="h-4 w-4" />
+                      Provision per produkttyp
+                    </h4>
+                    <p className="text-xs text-muted-foreground">
+                      Ange fast provision för varje produkttyp som säljs via denna partner
+                    </p>
+                    
+                    {products.length > 0 ? (
+                      <div className="space-y-3">
+                        {products.map((product) => (
+                          <div key={product.id} className="flex items-center justify-between p-3 bg-background rounded-lg border">
+                            <div>
+                              <p className="font-medium">{product.name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {product.type === 'battery' ? 'Batteri' : 'Sol'} • Grundpris: {formatCurrency(product.base_price_incl_moms)} kr
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm text-muted-foreground">Provision</p>
+                              <p className="font-medium">
+                                {product.type === 'battery' 
+                                  ? (formData.price_per_battery_deal ? `${formatCurrency(parseFloat(formData.price_per_battery_deal))} kr` : '–')
+                                  : (formData.price_per_solar_deal ? `${formatCurrency(parseFloat(formData.price_per_solar_deal))} kr` : '–')
+                                }
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground italic">Inga produkter konfigurerade</p>
+                    )}
+                  </div>
+                )}
+
                 {formData.billing_model === 'above_cost' && (
                   <>
-                    {/* Default Customer Price */}
-                    <div className="space-y-2">
-                      <Label htmlFor="default_price">Standardpris till kund (kr inkl. moms)</Label>
-                      <Input
-                        id="default_price"
-                        type="number"
-                        value={formData.default_customer_price}
-                        onChange={(e) => setFormData(prev => ({ ...prev, default_customer_price: e.target.value }))}
-                        placeholder="78000"
-                      />
-                    </div>
-
-                    {/* Base Cost */}
-                    <div className="space-y-2">
-                      <Label htmlFor="base_cost">Baskostnad (kr)</Label>
-                      <Input
-                        id="base_cost"
-                        type="number"
-                        value={formData.base_cost_for_billing}
-                        onChange={(e) => setFormData(prev => ({ ...prev, base_cost_for_billing: e.target.value }))}
-                        placeholder="23000"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Partnerns grundkostnad för installation
-                      </p>
-                    </div>
-
-                    {/* EUR to SEK rate */}
-                    <div className="grid grid-cols-2 gap-4">
+                    {/* Calculation inputs */}
+                    <div className="space-y-4 p-4 bg-muted/30 rounded-lg">
+                      <h4 className="font-medium flex items-center gap-2 text-sm">
+                        <Calculator className="h-4 w-4" />
+                        Beräkningsparametrar
+                      </h4>
+                      
+                      {/* Product selection */}
                       <div className="space-y-2">
-                        <Label htmlFor="eur_rate">EUR till SEK växelkurs</Label>
-                        <Input
-                          id="eur_rate"
-                          type="number"
-                          step="0.01"
-                          value={formData.eur_to_sek_rate}
-                          onChange={(e) => setFormData(prev => ({ ...prev, eur_to_sek_rate: e.target.value }))}
-                          placeholder="11"
-                        />
+                        <Label>Produkt (för materialkostnad)</Label>
+                        <Select
+                          value={formData.preview_product_id}
+                          onValueChange={(value) => setFormData(prev => ({ ...prev, preview_product_id: value }))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Välj produkt" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {products.map((product) => (
+                              <SelectItem key={product.id} value={product.id}>
+                                {product.name} ({product.material_cost_eur > 0 ? `${product.material_cost_eur} EUR` : 'Ingen EUR-kostnad'})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground">
+                          EUR-kostnaden används endast för Emaldo-produkter
+                        </p>
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="lf_finans">LF Finans (%)</Label>
-                        <Input
-                          id="lf_finans"
-                          type="number"
-                          step="0.1"
-                          value={formData.lf_finans_percent}
-                          onChange={(e) => setFormData(prev => ({ ...prev, lf_finans_percent: e.target.value }))}
-                          placeholder="3"
-                        />
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="preview_price">Totalpris mot kund (inkl. moms)</Label>
+                          <Input
+                            id="preview_price"
+                            type="number"
+                            value={formData.preview_total_price}
+                            onChange={(e) => setFormData(prev => ({ ...prev, preview_total_price: e.target.value }))}
+                            placeholder="78000"
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Pris innan Grön Teknik-avdrag
+                          </p>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="preview_owners">Antal fastighetsägare</Label>
+                          <Input
+                            id="preview_owners"
+                            type="number"
+                            min="1"
+                            value={formData.preview_property_owners}
+                            onChange={(e) => setFormData(prev => ({ ...prev, preview_property_owners: e.target.value }))}
+                            placeholder="1"
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Max 50 000 kr avdrag per ägare
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Base cost & rates */}
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="base_cost">Baskostnad (kr)</Label>
+                          <Input
+                            id="base_cost"
+                            type="number"
+                            value={formData.base_cost_for_billing}
+                            onChange={(e) => setFormData(prev => ({ ...prev, base_cost_for_billing: e.target.value }))}
+                            placeholder="23000"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="eur_rate">EUR → SEK</Label>
+                          <Input
+                            id="eur_rate"
+                            type="number"
+                            step="0.01"
+                            value={formData.eur_to_sek_rate}
+                            onChange={(e) => setFormData(prev => ({ ...prev, eur_to_sek_rate: e.target.value }))}
+                            placeholder="11"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="lf_finans">LF Finans (%)</Label>
+                          <Input
+                            id="lf_finans"
+                            type="number"
+                            step="0.1"
+                            value={formData.lf_finans_percent}
+                            onChange={(e) => setFormData(prev => ({ ...prev, lf_finans_percent: e.target.value }))}
+                            placeholder="3"
+                          />
+                        </div>
                       </div>
                     </div>
 
@@ -461,6 +654,97 @@ export const EditPartnerDialog = ({ partner, open, onOpenChange, onUpdated }: Ed
                         <Button type="button" variant="outline" size="icon" onClick={addCostSegment}>
                           <Plus className="w-4 h-4" />
                         </Button>
+                      </div>
+                    </div>
+
+                    {/* Cost Breakdown Preview */}
+                    <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg space-y-3">
+                      <h4 className="font-medium flex items-center gap-2 text-sm text-primary">
+                        <Calculator className="h-4 w-4" />
+                        Kostnadssammanställning (förhandsvisning)
+                      </h4>
+                      
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span>Totalpris inkl. moms</span>
+                          <span className="font-medium">{formatCurrency(billingBreakdown.totalPriceInclMoms)} kr</span>
+                        </div>
+                        
+                        <div className="flex justify-between text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            Grön Teknik-avdrag
+                            <span className="text-xs">
+                              ({billingBreakdown.deductionLimitedBy === 'owners' 
+                                ? `${formData.preview_property_owners} ägare × 50 000 kr` 
+                                : `${billingBreakdown.greenTechPercent}% av totalpris`})
+                            </span>
+                          </span>
+                          <span className="font-medium text-success">-{formatCurrency(billingBreakdown.greenTechDeduction)} kr</span>
+                        </div>
+                        
+                        <Separator className="my-2" />
+                        
+                        <div className="flex justify-between">
+                          <span>Kund betalar (efter avdrag)</span>
+                          <span className="font-medium">{formatCurrency(billingBreakdown.priceAfterDeduction)} kr</span>
+                        </div>
+                        
+                        <div className="flex justify-between text-muted-foreground">
+                          <span>Pris ex. moms (÷ 1.25)</span>
+                          <span>{formatCurrency(billingBreakdown.priceExMoms)} kr</span>
+                        </div>
+                        
+                        <Separator className="my-2" />
+                        
+                        <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Kostnader</div>
+                        
+                        <div className="flex justify-between text-muted-foreground">
+                          <span>Baskostnad (installation)</span>
+                          <span>-{formatCurrency(billingBreakdown.baseCost)} kr</span>
+                        </div>
+                        
+                        {billingBreakdown.materialCostSek > 0 && (
+                          <div className="flex justify-between text-muted-foreground">
+                            <span>Materialkostnad ({billingBreakdown.materialCostEur} EUR × {formData.eur_to_sek_rate})</span>
+                            <span>-{formatCurrency(billingBreakdown.materialCostSek)} kr</span>
+                          </div>
+                        )}
+                        
+                        <div className="flex justify-between text-muted-foreground">
+                          <span>LF Finans ({formData.lf_finans_percent}%)</span>
+                          <span>-{formatCurrency(billingBreakdown.lfFinansFee)} kr</span>
+                        </div>
+                        
+                        {billingBreakdown.customCostsSek > 0 && (
+                          <div className="flex justify-between text-muted-foreground">
+                            <span>Övriga kostnader</span>
+                            <span>-{formatCurrency(billingBreakdown.customCostsSek)} kr</span>
+                          </div>
+                        )}
+                        
+                        <div className="flex justify-between font-medium pt-1 border-t">
+                          <span>Totala kostnader</span>
+                          <span>-{formatCurrency(billingBreakdown.totalCosts)} kr</span>
+                        </div>
+                        
+                        <Separator className="my-2" />
+                        
+                        <div className="flex justify-between text-lg font-bold">
+                          <span>Fakturaunderlag (påslag)</span>
+                          <span className={billingBreakdown.billableAmount >= 0 ? 'text-success' : 'text-destructive'}>
+                            {formatCurrency(billingBreakdown.billableAmount)} kr
+                          </span>
+                        </div>
+                        
+                        <div className="flex justify-between text-muted-foreground">
+                          <span>→ ProffsKontakts andel ({formData.company_markup_share}%)</span>
+                          <span className="font-medium text-primary">{formatCurrency(billingBreakdown.companyBillable)} kr</span>
+                        </div>
+                        
+                        <div className="flex justify-between text-muted-foreground">
+                          <span>→ Closers andel ({100 - parseFloat(formData.company_markup_share)}%)</span>
+                          <span>{formatCurrency(billingBreakdown.partnerBillable)} kr</span>
+                        </div>
                       </div>
                     </div>
                   </>
