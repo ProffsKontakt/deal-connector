@@ -473,6 +473,7 @@ export type Database = {
       }
       organizations: {
         Row: {
+          allow_manual_calculation: boolean
           base_cost_for_billing: number | null
           billing_model: string | null
           company_markup_share: number | null
@@ -492,6 +493,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          allow_manual_calculation?: boolean
           base_cost_for_billing?: number | null
           billing_model?: string | null
           company_markup_share?: number | null
@@ -511,6 +513,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          allow_manual_calculation?: boolean
           base_cost_for_billing?: number | null
           billing_model?: string | null
           company_markup_share?: number | null

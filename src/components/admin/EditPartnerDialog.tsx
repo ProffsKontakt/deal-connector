@@ -48,6 +48,7 @@ interface Partner {
   eur_to_sek_rate?: number;
   lf_finans_percent?: number;
   default_customer_price?: number;
+  allow_manual_calculation?: boolean;
 }
 
 interface EditPartnerDialogProps {
@@ -75,6 +76,7 @@ export const EditPartnerDialog = ({ partner, open, onOpenChange, onUpdated }: Ed
     eur_to_sek_rate: '11',
     lf_finans_percent: '3',
     default_customer_price: '78000',
+    allow_manual_calculation: false,
     // For "Allt över" calculation preview
     preview_total_price: '78000',
     preview_property_owners: '1',
@@ -110,6 +112,7 @@ export const EditPartnerDialog = ({ partner, open, onOpenChange, onUpdated }: Ed
         eur_to_sek_rate: (partner.eur_to_sek_rate ?? 11).toString(),
         lf_finans_percent: (partner.lf_finans_percent ?? 3).toString(),
         default_customer_price: (partner.default_customer_price ?? 78000).toString(),
+        allow_manual_calculation: partner.allow_manual_calculation || false,
         preview_total_price: (partner.default_customer_price ?? 78000).toString(),
         preview_property_owners: '1',
         preview_product_id: '',
@@ -280,21 +283,14 @@ export const EditPartnerDialog = ({ partner, open, onOpenChange, onUpdated }: Ed
     const greenTechPercent = selectedProduct?.green_tech_deduction_percent || 48.5;
     const materialCostEur = selectedProduct?.material_cost_eur || 0;
     
-    // Calculate green tech deduction for CUSTOMER BENEFIT
+    // Calculate green tech deduction for CUSTOMER BENEFIT ONLY
+    // This does NOT affect our billing - we bill full price regardless of property owners
     // Max deduction per property owner: 50,000 SEK
-    // OR max 48.5% of total price (whichever is lower)
+    // OR max greenTechPercent% of total price (whichever is lower)
     const maxDeductionPerOwner = 50000;
     const totalMaxDeductionByOwners = propertyOwners * maxDeductionPerOwner;
     const maxDeductionByPercent = totalPriceInclMoms * (greenTechPercent / 100);
-    
-    // Green tech with 1 owner (baseline)
-    const baselineGreenTech = Math.min(maxDeductionPerOwner, maxDeductionByPercent);
-    // Green tech with actual owners
     const greenTechDeduction = Math.min(totalMaxDeductionByOwners, maxDeductionByPercent);
-    
-    // Extra deduction from additional owners - this adds to our billable amount
-    // because we still bill for full price but customer pays less
-    const extraDeductionFromOwners = greenTechDeduction - baselineGreenTech;
     
     // Price after green tech deduction (what customer actually pays)
     const priceAfterDeduction = totalPriceInclMoms - greenTechDeduction;
@@ -315,18 +311,12 @@ export const EditPartnerDialog = ({ partner, open, onOpenChange, onUpdated }: Ed
     
     // BILLING IS BASED ON FULL PRICE (not after deduction)
     // The green tech deduction only benefits the customer, not our billing
+    // Property owners do NOT affect what we bill - only what customer pays out of pocket
     const priceExMoms = totalPriceInclMoms / 1.25;
     
-    // Base billable = price ex moms - costs
-    const baseBillableAmount = priceExMoms - totalCosts;
-    
-    // Extra from additional property owners (deduction goes to cover more of customer price)
-    // The extra deduction from owners is already included in priceExMoms since we bill full price
-    // So we add the ex-moms portion of the extra deduction
-    const extraBillableFromOwners = extraDeductionFromOwners / 1.25;
-    
-    // Total billable = base + extra from owners
-    const billableAmount = baseBillableAmount + extraBillableFromOwners;
+    // Billable amount = price ex moms - costs
+    // NO extra from property owners - that deduction is a state subsidy for the customer
+    const billableAmount = priceExMoms - totalCosts;
     
     // For "Allt över" model: ALL påslag goes to ProffsKontakt (no split with installer)
     // For "Satt provision" model: påslag is split between ProffsKontakt and installer
@@ -352,8 +342,6 @@ export const EditPartnerDialog = ({ partner, open, onOpenChange, onUpdated }: Ed
       lfFinansFee,
       customCostsSek,
       totalCosts,
-      baseBillableAmount,
-      extraBillableFromOwners,
       billableAmount,
       companyShare,
       companyBillable,
@@ -384,6 +372,7 @@ export const EditPartnerDialog = ({ partner, open, onOpenChange, onUpdated }: Ed
           eur_to_sek_rate: parseFloat(formData.eur_to_sek_rate) || 11,
           lf_finans_percent: parseFloat(formData.lf_finans_percent) || 3,
           default_customer_price: parseFloat(formData.default_customer_price) || 78000,
+          allow_manual_calculation: formData.allow_manual_calculation,
         })
         .eq('id', partner.id);
 
@@ -648,11 +637,25 @@ export const EditPartnerDialog = ({ partner, open, onOpenChange, onUpdated }: Ed
 
                 {formData.billing_model === 'above_cost' && (
                   <>
+                    {/* Toggle for manual calculation */}
+                    <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
+                      <div>
+                        <Label className="font-medium">Tillåt manuell beräkning</Label>
+                        <p className="text-xs text-muted-foreground">
+                          Om aktiverat kan closers ange egna beräkningsparametrar i sina lead-kort
+                        </p>
+                      </div>
+                      <Switch
+                        checked={formData.allow_manual_calculation}
+                        onCheckedChange={(checked) => setFormData(prev => ({ ...prev, allow_manual_calculation: checked }))}
+                      />
+                    </div>
+                    
                     {/* Calculation inputs */}
                     <div className="space-y-4 p-4 bg-muted/30 rounded-lg">
                       <h4 className="font-medium flex items-center gap-2 text-sm">
                         <Calculator className="h-4 w-4" />
-                        Beräkningsparametrar
+                        Beräkningsparametrar (förhandsvisning)
                       </h4>
                       
                       {/* Product selection */}
@@ -863,18 +866,6 @@ export const EditPartnerDialog = ({ partner, open, onOpenChange, onUpdated }: Ed
                         </div>
                         
                         <Separator className="my-2" />
-                        
-                        <div className="flex justify-between text-muted-foreground">
-                          <span>Basbelopp (pris ex moms − kostnader)</span>
-                          <span>{formatCurrency(billingBreakdown.baseBillableAmount)} kr</span>
-                        </div>
-                        
-                        {billingBreakdown.extraBillableFromOwners > 0 && (
-                          <div className="flex justify-between text-muted-foreground">
-                            <span>+ Extra från {formData.preview_property_owners} fastighetsägare</span>
-                            <span className="text-success">+{formatCurrency(billingBreakdown.extraBillableFromOwners)} kr</span>
-                          </div>
-                        )}
                         
                         <div className="flex justify-between text-lg font-bold pt-1 border-t">
                           <span>Fakturaunderlag (påslag)</span>
