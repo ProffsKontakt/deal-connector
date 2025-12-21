@@ -6,9 +6,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
 import { InterestBadge } from '@/components/ui/interest-badge';
 import { StatusBadge } from '@/components/ui/status-badge';
-import { Building2, Mail, Phone, MapPin, User, CreditCard, Pencil, X, Check } from 'lucide-react';
+import { Building2, Mail, Phone, MapPin, User, CreditCard, Pencil, X, Check, Package } from 'lucide-react';
 import { format } from 'date-fns';
 import { sv } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
@@ -26,10 +27,26 @@ interface Opener {
   email: string;
 }
 
+interface Product {
+  id: string;
+  name: string;
+  type: string;
+  base_price_incl_moms: number;
+  material_cost_eur: number;
+}
+
 interface CreditRequest {
   status: 'pending' | 'approved' | 'denied';
   organization_id: string;
   organization?: { name: string };
+}
+
+interface Sale {
+  id: string;
+  product_id: string | null;
+  custom_product_name: string | null;
+  custom_product_price: number | null;
+  custom_product_material_cost_eur: number | null;
 }
 
 interface Contact {
@@ -44,6 +61,7 @@ interface Contact {
   opener?: { email: string; full_name: string | null };
   organizations?: Organization[];
   credit_requests?: CreditRequest[];
+  sales?: Sale[];
 }
 
 interface DealDetailsDialogProps {
@@ -60,6 +78,7 @@ export const DealDetailsDialog = ({ contact, organizations, open, onOpenChange, 
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [openers, setOpeners] = useState<Opener[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [editData, setEditData] = useState({
     name: '',
     email: '',
@@ -68,23 +87,37 @@ export const DealDetailsDialog = ({ contact, organizations, open, onOpenChange, 
     interest: '' as 'sun' | 'battery' | 'sun_battery',
     opener_id: '',
     selectedOrganizations: [] as string[],
+    // Product selection
+    useCustomProduct: false,
+    product_id: '',
+    custom_product_name: '',
+    custom_product_price: '',
+    custom_product_material_cost_eur: '',
   });
 
   useEffect(() => {
-    const fetchOpeners = async () => {
-      const { data } = await supabase
-        .from('profiles')
-        .select('id, full_name, email')
-        .in('role', ['opener', 'teamleader']);
-      if (data) setOpeners(data);
+    const fetchData = async () => {
+      const [openersRes, productsRes] = await Promise.all([
+        supabase.from('profiles').select('id, full_name, email').in('role', ['opener', 'teamleader']),
+        supabase.from('products').select('id, name, type, base_price_incl_moms, material_cost_eur').order('name')
+      ]);
+      if (openersRes.data) setOpeners(openersRes.data);
+      if (productsRes.data) setProducts(productsRes.data);
     };
-    fetchOpeners();
+    fetchData();
   }, []);
 
   const isAdmin = profile?.role === 'admin';
+  const isCloser = profile?.role === ('closer' as string);
+  const canEditProduct = isAdmin || isCloser;
 
   const startEditing = () => {
     if (!contact) return;
+    
+    // Check if this contact has a sale with product info
+    const sale = contact.sales?.[0];
+    const hasCustomProduct = !!sale?.custom_product_name;
+    
     setEditData({
       name: contact.name || '',
       email: contact.email,
@@ -93,6 +126,11 @@ export const DealDetailsDialog = ({ contact, organizations, open, onOpenChange, 
       interest: contact.interest,
       opener_id: contact.opener_id || '',
       selectedOrganizations: contact.organizations?.map(o => o.id) || [],
+      useCustomProduct: hasCustomProduct,
+      product_id: sale?.product_id || '',
+      custom_product_name: sale?.custom_product_name || '',
+      custom_product_price: sale?.custom_product_price?.toString() || '',
+      custom_product_material_cost_eur: sale?.custom_product_material_cost_eur?.toString() || '',
     });
     setIsEditing(true);
   };
@@ -170,11 +208,26 @@ export const DealDetailsDialog = ({ contact, organizations, open, onOpenChange, 
         contact.interest = editData.interest;
       }
 
+      // Update product info if user has permission and there's a sale
+      if (canEditProduct && contact.sales?.[0]) {
+        const saleUpdate: Record<string, unknown> = {
+          product_id: editData.useCustomProduct ? null : (editData.product_id || null),
+          custom_product_name: editData.useCustomProduct ? editData.custom_product_name || null : null,
+          custom_product_price: editData.useCustomProduct && editData.custom_product_price ? parseFloat(editData.custom_product_price) : null,
+          custom_product_material_cost_eur: editData.useCustomProduct && editData.custom_product_material_cost_eur ? parseFloat(editData.custom_product_material_cost_eur) : null,
+        };
+
+        await supabase
+          .from('sales')
+          .update(saleUpdate)
+          .eq('id', contact.sales[0].id);
+      }
+
       toast({ title: 'Deal uppdaterad' });
       setIsEditing(false);
       onDealUpdated?.();
-    } catch (error: any) {
-      toast({ title: 'Fel', description: error.message, variant: 'destructive' });
+    } catch (error: unknown) {
+      toast({ title: 'Fel', description: (error as Error).message, variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -199,11 +252,11 @@ export const DealDetailsDialog = ({ contact, organizations, open, onOpenChange, 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle className="text-xl">Deal Detaljer</DialogTitle>
-            {isAdmin && !isEditing && (
+            {(isAdmin || isCloser) && !isEditing && (
               <Button variant="outline" size="sm" onClick={startEditing}>
                 <Pencil className="w-4 h-4 mr-2" />
                 Redigera
@@ -381,6 +434,113 @@ export const DealDetailsDialog = ({ contact, organizations, open, onOpenChange, 
               )}
             </CardContent>
           </Card>
+
+          {/* Product Selection - Only when editing and for closers/admins */}
+          {isEditing && canEditProduct && (
+            <Card className="glass-card">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                  <Package className="w-4 h-4" />
+                  Produktval
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="font-medium">Anpassad produkt</Label>
+                    <p className="text-xs text-muted-foreground">Aktivera för att ange en lead-specifik produkt</p>
+                  </div>
+                  <Switch
+                    checked={editData.useCustomProduct}
+                    onCheckedChange={(checked) => setEditData(prev => ({ ...prev, useCustomProduct: checked }))}
+                  />
+                </div>
+
+                {editData.useCustomProduct ? (
+                  <div className="space-y-3 pl-4 border-l-2 border-primary/30">
+                    <div className="space-y-2">
+                      <Label htmlFor="custom_name">Produktnamn</Label>
+                      <Input
+                        id="custom_name"
+                        value={editData.custom_product_name}
+                        onChange={(e) => setEditData(prev => ({ ...prev, custom_product_name: e.target.value }))}
+                        placeholder="t.ex. Custom Emaldo 15kWh"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label htmlFor="custom_price">Pris inkl. moms (SEK)</Label>
+                        <Input
+                          id="custom_price"
+                          type="number"
+                          value={editData.custom_product_price}
+                          onChange={(e) => setEditData(prev => ({ ...prev, custom_product_price: e.target.value }))}
+                          placeholder="78000"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="custom_material">Materialkostnad (EUR)</Label>
+                        <Input
+                          id="custom_material"
+                          type="number"
+                          value={editData.custom_product_material_cost_eur}
+                          onChange={(e) => setEditData(prev => ({ ...prev, custom_product_material_cost_eur: e.target.value }))}
+                          placeholder="6150"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Label>Välj produkt</Label>
+                    <Select
+                      value={editData.product_id}
+                      onValueChange={(value) => setEditData(prev => ({ ...prev, product_id: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Välj en produkt" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {products.map((product) => (
+                          <SelectItem key={product.id} value={product.id}>
+                            {product.name} ({product.base_price_incl_moms.toLocaleString('sv-SE')} kr)
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Show current product info when not editing */}
+          {!isEditing && contact.sales?.[0] && (
+            <Card className="glass-card">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                  <Package className="w-4 h-4" />
+                  Vald produkt
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {contact.sales[0].custom_product_name ? (
+                  <div className="space-y-2">
+                    <p className="font-medium">{contact.sales[0].custom_product_name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      Anpassad produkt • {contact.sales[0].custom_product_price?.toLocaleString('sv-SE')} kr
+                    </p>
+                  </div>
+                ) : contact.sales[0].product_id ? (
+                  <p className="font-medium">
+                    {products.find(p => p.id === contact.sales![0].product_id)?.name || 'Okänd produkt'}
+                  </p>
+                ) : (
+                  <p className="text-muted-foreground text-sm">Ingen produkt vald</p>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Credit Requests - Read only */}
           {!isEditing && (
