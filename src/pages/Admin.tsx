@@ -11,9 +11,10 @@ import { StatusBadge } from '@/components/ui/status-badge';
 import { EmptyState } from '@/components/ui/empty-state';
 import { CreateOrganizationDialog } from '@/components/admin/CreateOrganizationDialog';
 import { BulkImportPartnersDialog } from '@/components/admin/BulkImportPartnersDialog';
+import { EditPartnerDialog } from '@/components/admin/EditPartnerDialog';
 import { AddUserDialog } from '@/components/admin/AddUserDialog';
 import { toast } from 'sonner';
-import { Building2, Users, CreditCard, Check, X, Save, Settings, Inbox, Archive, Trash2 } from 'lucide-react';
+import { Building2, Users, CreditCard, Check, X, Settings, Inbox, Archive, Trash2, Settings2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { sv } from 'date-fns/locale';
 import { Navigate } from 'react-router-dom';
@@ -41,6 +42,13 @@ interface Organization {
   price_per_solar_deal: number | null;
   price_per_battery_deal: number | null;
   price_per_site_visit: number | null;
+  is_sales_consultant?: boolean;
+  billing_model?: string;
+  company_markup_share?: number;
+  base_cost_for_billing?: number;
+  eur_to_sek_rate?: number;
+  lf_finans_percent?: number;
+  default_customer_price?: number;
 }
 
 interface Profile {
@@ -67,8 +75,7 @@ const Admin = () => {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [creditRequests, setCreditRequests] = useState<CreditRequest[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editingOrg, setEditingOrg] = useState<string | null>(null);
-  const [orgPrices, setOrgPrices] = useState<Record<string, { solar: string; battery: string; siteVisit: string }>>({});
+  const [editingOrg, setEditingOrg] = useState<Organization | null>(null);
   const [orgStatusFilter, setOrgStatusFilter] = useState<'active' | 'archived'>('active');
   const [deleteOrg, setDeleteOrg] = useState<{ id: string; name: string } | null>(null);
   const [deleteUser, setDeleteUser] = useState<{ id: string; email: string } | null>(null);
@@ -96,42 +103,12 @@ const Admin = () => {
 
       if (orgsRes.data) {
         setOrganizations(orgsRes.data as Organization[]);
-        const prices: Record<string, { solar: string; battery: string; siteVisit: string }> = {};
-        orgsRes.data.forEach(org => {
-          prices[org.id] = {
-            solar: org.price_per_solar_deal?.toString() || '',
-            battery: org.price_per_battery_deal?.toString() || '',
-            siteVisit: org.price_per_site_visit?.toString() || ''
-          };
-        });
-        setOrgPrices(prices);
       }
       if (profilesRes.data) setProfiles(profilesRes.data);
       if (creditsRes.data) setCreditRequests(creditsRes.data as CreditRequest[]);
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleSaveOrgPrices = async (orgId: string) => {
-    const prices = orgPrices[orgId];
-    const { error } = await supabase
-      .from('organizations')
-      .update({
-        price_per_solar_deal: prices.solar ? parseFloat(prices.solar) : null,
-        price_per_battery_deal: prices.battery ? parseFloat(prices.battery) : null,
-        price_per_site_visit: prices.siteVisit ? parseFloat(prices.siteVisit) : null
-      })
-      .eq('id', orgId);
-
-    if (error) {
-      toast.error('⚠️ Kunde inte spara priser');
-      return;
-    }
-    
-    toast.success('🎉 Priser uppdaterade');
-    setEditingOrg(null);
-    fetchData();
   };
 
   const handleArchiveOrg = async (orgId: string) => {
@@ -344,120 +321,76 @@ const Admin = () => {
                       {organizations.map((org) => (
                         <TableRow key={org.id} className="group">
                           <TableCell>
-                            <div>
-                              <p className="font-medium">{org.name}</p>
-                              {org.contact_person_name && (
-                                <p className="text-xs text-muted-foreground">{org.contact_person_name}</p>
+                            <div className="flex items-center gap-2">
+                              <div>
+                                <p className="font-medium">{org.name}</p>
+                                {org.contact_person_name && (
+                                  <p className="text-xs text-muted-foreground">{org.contact_person_name}</p>
+                                )}
+                              </div>
+                              {org.is_sales_consultant && (
+                                <span className="px-2 py-0.5 text-xs rounded-full bg-primary/10 text-primary">
+                                  Säljkonsult
+                                </span>
                               )}
                             </div>
                           </TableCell>
                           <TableCell>
-                            {editingOrg === org.id ? (
-                              <Input
-                                type="number"
-                                value={orgPrices[org.id]?.solar || ''}
-                                onChange={(e) => setOrgPrices(prev => ({
-                                  ...prev,
-                                  [org.id]: { ...prev[org.id], solar: e.target.value }
-                                }))}
-                                className="w-24 h-9"
-                                placeholder="0"
-                              />
-                            ) : (
-                              <span className="text-muted-foreground">
-                                {org.price_per_solar_deal ? `${org.price_per_solar_deal.toLocaleString('sv-SE')} kr` : '–'}
-                              </span>
-                            )}
+                            <span className="text-muted-foreground">
+                              {org.price_per_solar_deal ? `${org.price_per_solar_deal.toLocaleString('sv-SE')} kr` : '–'}
+                            </span>
                           </TableCell>
                           <TableCell>
-                            {editingOrg === org.id ? (
-                              <Input
-                                type="number"
-                                value={orgPrices[org.id]?.battery || ''}
-                                onChange={(e) => setOrgPrices(prev => ({
-                                  ...prev,
-                                  [org.id]: { ...prev[org.id], battery: e.target.value }
-                                }))}
-                                className="w-24 h-9"
-                                placeholder="0"
-                              />
-                            ) : (
-                              <span className="text-muted-foreground">
-                                {org.price_per_battery_deal ? `${org.price_per_battery_deal.toLocaleString('sv-SE')} kr` : '–'}
-                              </span>
-                            )}
+                            <span className="text-muted-foreground">
+                              {org.price_per_battery_deal ? `${org.price_per_battery_deal.toLocaleString('sv-SE')} kr` : '–'}
+                            </span>
                           </TableCell>
                           <TableCell>
-                            {editingOrg === org.id ? (
-                              <Input
-                                type="number"
-                                value={orgPrices[org.id]?.siteVisit || ''}
-                                onChange={(e) => setOrgPrices(prev => ({
-                                  ...prev,
-                                  [org.id]: { ...prev[org.id], siteVisit: e.target.value }
-                                }))}
-                                className="w-24 h-9"
-                                placeholder="0"
-                              />
-                            ) : (
-                              <span className="text-muted-foreground">
-                                {org.price_per_site_visit ? `${org.price_per_site_visit.toLocaleString('sv-SE')} kr` : '–'}
-                              </span>
-                            )}
+                            <span className="text-muted-foreground">
+                              {org.price_per_site_visit ? `${org.price_per_site_visit.toLocaleString('sv-SE')} kr` : '–'}
+                            </span>
                           </TableCell>
                           <TableCell>
                             <div className="flex gap-1">
-                              {editingOrg === org.id ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setEditingOrg(org)}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <Settings2 className="w-4 h-4 mr-1" />
+                                Redigera
+                              </Button>
+                              {orgStatusFilter === 'active' ? (
                                 <Button
                                   size="sm"
-                                  onClick={() => handleSaveOrgPrices(org.id)}
-                                  className="gap-1.5"
+                                  variant="ghost"
+                                  onClick={() => handleArchiveOrg(org.id)}
+                                  className="opacity-0 group-hover:opacity-100 transition-opacity"
+                                  title="Arkivera"
                                 >
-                                  <Save className="w-3.5 h-3.5" />
-                                  Spara
+                                  <Archive className="w-4 h-4" />
                                 </Button>
                               ) : (
-                                <>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => setEditingOrg(org.id)}
-                                    className="opacity-0 group-hover:opacity-100 transition-opacity"
-                                  >
-                                    Redigera
-                                  </Button>
-                                  {orgStatusFilter === 'active' ? (
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      onClick={() => handleArchiveOrg(org.id)}
-                                      className="opacity-0 group-hover:opacity-100 transition-opacity"
-                                      title="Arkivera"
-                                    >
-                                      <Archive className="w-4 h-4" />
-                                    </Button>
-                                  ) : (
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      onClick={() => handleActivateOrg(org.id)}
-                                      className="opacity-0 group-hover:opacity-100 transition-opacity"
-                                      title="Aktivera"
-                                    >
-                                      <Building2 className="w-4 h-4" />
-                                    </Button>
-                                  )}
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
-                                    onClick={() => setDeleteOrg({ id: org.id, name: org.name })}
-                                    title="Ta bort"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </Button>
-                                </>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleActivateOrg(org.id)}
+                                  className="opacity-0 group-hover:opacity-100 transition-opacity"
+                                  title="Aktivera"
+                                >
+                                  <Building2 className="w-4 h-4" />
+                                </Button>
                               )}
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
+                                onClick={() => setDeleteOrg({ id: org.id, name: org.name })}
+                                title="Ta bort"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
                             </div>
                           </TableCell>
                         </TableRow>
@@ -468,6 +401,14 @@ const Admin = () => {
               )}
             </CardContent>
           </Card>
+          
+          {/* Edit Partner Dialog */}
+          <EditPartnerDialog
+            partner={editingOrg}
+            open={!!editingOrg}
+            onOpenChange={(open) => !open && setEditingOrg(null)}
+            onUpdated={fetchData}
+          />
         </TabsContent>
 
         <TabsContent value="users" className="animate-fade-in">
