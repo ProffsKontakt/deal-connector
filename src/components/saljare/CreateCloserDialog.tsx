@@ -33,7 +33,6 @@ export const CreateCloserDialog = ({ onCreated }: CreateCloserDialogProps) => {
     full_name: '',
     base_commission: '8000',
     markup_percentage: '40',
-    company_markup_share: '70',
   });
   const [selectedRegions, setSelectedRegions] = useState<{ regionId: string; organizationId: string }[]>([]);
 
@@ -120,7 +119,6 @@ export const CreateCloserDialog = ({ onCreated }: CreateCloserDialogProps) => {
             full_name: formData.full_name.trim(),
             closer_base_commission: parseFloat(formData.base_commission) || 8000,
             closer_markup_percentage: parseFloat(formData.markup_percentage) || 40,
-            closer_company_markup_share: parseFloat(formData.company_markup_share) || 70,
           })
           .eq('id', data.user.id);
 
@@ -148,7 +146,7 @@ export const CreateCloserDialog = ({ onCreated }: CreateCloserDialogProps) => {
       }
 
       toast.success('Closer skapad');
-      setFormData({ email: '', password: '', full_name: '', base_commission: '8000', markup_percentage: '40', company_markup_share: '70' });
+      setFormData({ email: '', password: '', full_name: '', base_commission: '8000', markup_percentage: '40' });
       setSelectedRegions([]);
       setOpen(false);
       onCreated();
@@ -256,17 +254,6 @@ export const CreateCloserDialog = ({ onCreated }: CreateCloserDialogProps) => {
               <p className="text-xs text-muted-foreground">Standard: 8 000 kr per stängd affär</p>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="closer-company-share">ProffsKontakts andel av påslag (%)</Label>
-              <Input
-                id="closer-company-share"
-                type="number"
-                value={formData.company_markup_share}
-                onChange={(e) => setFormData(prev => ({ ...prev, company_markup_share: e.target.value }))}
-                placeholder="70"
-              />
-              <p className="text-xs text-muted-foreground">Hur stor del av påslag ex moms som ProffsKontakt tar (t.ex. 70%)</p>
-            </div>
 
             <div className="space-y-2">
               <Label htmlFor="closer-markup-percentage">Closerns andel av bolagets påslag (%)</Label>
