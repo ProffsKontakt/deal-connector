@@ -18,7 +18,7 @@ import { Search, Filter, FileText, TrendingUp, Calendar, ChevronLeft, ChevronRig
 import { format, startOfMonth, endOfMonth, subMonths, addMonths } from 'date-fns';
 import { sv } from 'date-fns/locale';
 
-type ColumnKey = 'email' | 'phone' | 'interest' | 'date' | 'opener' | 'creditStatus';
+type ColumnKey = 'name' | 'email' | 'phone' | 'address' | 'postalCode' | 'interest' | 'date' | 'opener' | 'organizations' | 'creditStatus' | 'region';
 
 interface ColumnConfig {
   key: ColumnKey;
@@ -26,11 +26,16 @@ interface ColumnConfig {
 }
 
 const DEFAULT_COLUMNS: ColumnConfig[] = [
+  { key: 'name', label: 'Namn' },
   { key: 'email', label: 'E-post' },
   { key: 'phone', label: 'Telefon' },
+  { key: 'address', label: 'Adress' },
+  { key: 'postalCode', label: 'Postnummer' },
   { key: 'interest', label: 'Intresse' },
   { key: 'date', label: 'Datum' },
   { key: 'opener', label: 'Opener' },
+  { key: 'organizations', label: 'Organisationer' },
+  { key: 'region', label: 'Region' },
   { key: 'creditStatus', label: 'Kredit Status' },
 ];
 
@@ -40,6 +45,7 @@ interface Contact {
   name: string | null;
   phone: string | null;
   address: string | null;
+  postal_code: string | null;
   date_sent: string;
   interest: 'sun' | 'battery' | 'sun_battery';
   opener_id: string;
@@ -47,6 +53,7 @@ interface Contact {
   opener?: { email: string; full_name: string | null };
   organizations?: { id: string; name: string }[];
   credit_requests?: { status: 'pending' | 'approved' | 'denied'; organization_id: string }[];
+  region?: { id: string; name: string };
 }
 
 interface Organization {
@@ -73,13 +80,16 @@ const Deals = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterOrg, setFilterOrg] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterInterest, setFilterInterest] = useState<string>('all');
+  const [filterRegion, setFilterRegion] = useState<string>('all');
+  const [regions, setRegions] = useState<{ id: string; name: string }[]>([]);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   
   // Column management with ordering
   const [columnOrder, setColumnOrder] = useState<ColumnConfig[]>(DEFAULT_COLUMNS);
-  const [visibleColumns, setVisibleColumns] = useState<Set<ColumnKey>>(new Set(['email', 'phone', 'interest', 'date', 'opener', 'creditStatus']));
+  const [visibleColumns, setVisibleColumns] = useState<Set<ColumnKey>>(new Set(['name', 'email', 'phone', 'interest', 'date', 'opener', 'creditStatus']));
   
   // Multi-select state
   const [selectedDeals, setSelectedDeals] = useState<Set<string>>(new Set());
@@ -138,6 +148,13 @@ const Deals = () => {
         .select('id, name, price_per_solar_deal, price_per_battery_deal');
       setOrganizations(orgsData || []);
 
+      // Fetch regions
+      const { data: regionsData } = await supabase
+        .from('regions')
+        .select('id, name')
+        .order('name');
+      setRegions(regionsData || []);
+
       // Fetch price history for accurate historical calculations
       const { data: historyData } = await supabase
         .from('organization_price_history')
@@ -151,7 +168,8 @@ const Deals = () => {
           *,
           opener:profiles!contacts_opener_id_fkey(email, full_name),
           contact_organizations(organization:organizations(id, name)),
-          credit_requests(status, organization_id)
+          credit_requests(status, organization_id),
+          region:regions(id, name)
         `)
         .order('date_sent', { ascending: false });
 
@@ -178,7 +196,8 @@ const Deals = () => {
       contact.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       contact.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       contact.phone?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      contact.address?.toLowerCase().includes(searchTerm.toLowerCase());
+      contact.address?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      contact.postal_code?.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesOrg = filterOrg === 'all' || 
       contact.organizations?.some(o => o.id === filterOrg);
@@ -186,13 +205,17 @@ const Deals = () => {
     const matchesStatus = filterStatus === 'all' ||
       contact.credit_requests?.some(cr => cr.status === filterStatus);
 
+    const matchesInterest = filterInterest === 'all' || contact.interest === filterInterest;
+
+    const matchesRegion = filterRegion === 'all' || contact.region_id === filterRegion;
+
     // Month filter
     const contactDate = new Date(contact.date_sent);
     const monthStart = startOfMonth(selectedMonth);
     const monthEnd = endOfMonth(selectedMonth);
     const matchesMonth = contactDate >= monthStart && contactDate <= monthEnd;
 
-    return matchesSearch && matchesOrg && matchesStatus && matchesMonth;
+    return matchesSearch && matchesOrg && matchesStatus && matchesInterest && matchesRegion && matchesMonth;
   });
 
   // Function to get price for a contact at its date from price history
@@ -363,7 +386,7 @@ const Deals = () => {
               </div>
             </div>
             
-            <div className="flex flex-col lg:flex-row gap-4">
+            <div className="flex flex-col gap-4">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
@@ -373,9 +396,9 @@ const Deals = () => {
                   className="pl-10 h-11"
                 />
               </div>
-              <div className="flex gap-3">
+              <div className="flex flex-wrap gap-3">
                 <Select value={filterOrg} onValueChange={setFilterOrg}>
-                  <SelectTrigger className="w-52 h-11">
+                  <SelectTrigger className="w-48 h-11">
                     <Filter className="w-4 h-4 mr-2 text-muted-foreground" />
                     <SelectValue placeholder="Organisation" />
                   </SelectTrigger>
@@ -389,7 +412,7 @@ const Deals = () => {
                   </SelectContent>
                 </Select>
                 <Select value={filterStatus} onValueChange={setFilterStatus}>
-                  <SelectTrigger className="w-44 h-11">
+                  <SelectTrigger className="w-40 h-11">
                     <SelectValue placeholder="Status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -397,6 +420,30 @@ const Deals = () => {
                     <SelectItem value="pending">Väntande</SelectItem>
                     <SelectItem value="approved">Godkänd</SelectItem>
                     <SelectItem value="denied">Nekad</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={filterInterest} onValueChange={setFilterInterest}>
+                  <SelectTrigger className="w-40 h-11">
+                    <SelectValue placeholder="Intresse" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Alla intresse</SelectItem>
+                    <SelectItem value="sun">Sol</SelectItem>
+                    <SelectItem value="battery">Batteri</SelectItem>
+                    <SelectItem value="sun_battery">Sol + Batteri</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={filterRegion} onValueChange={setFilterRegion}>
+                  <SelectTrigger className="w-44 h-11">
+                    <SelectValue placeholder="Region" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Alla regioner</SelectItem>
+                    {regions.map((region) => (
+                      <SelectItem key={region.id} value={region.id}>
+                        {region.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -408,7 +455,7 @@ const Deals = () => {
             <EmptyState
               icon={FileText}
               title="Inga deals hittades"
-              description={searchTerm || filterOrg !== 'all' || filterStatus !== 'all' 
+              description={searchTerm || filterOrg !== 'all' || filterStatus !== 'all' || filterInterest !== 'all' || filterRegion !== 'all'
                 ? "Prova att justera dina filter för att hitta det du söker"
                 : "Det finns inga deals att visa ännu"}
             />
@@ -501,6 +548,9 @@ const Deals = () => {
                           </TableCell>
                           {orderedVisibleColumns.map((col) => (
                             <TableCell key={col.key} className="whitespace-nowrap">
+                              {col.key === 'name' && (
+                                <span className="font-medium">{contact.name || '–'}</span>
+                              )}
                               {col.key === 'email' && (
                                 <span className="font-medium group-hover:text-primary transition-colors">
                                   {contact.email}
@@ -508,6 +558,12 @@ const Deals = () => {
                               )}
                               {col.key === 'phone' && (
                                 <span className="text-muted-foreground">{contact.phone || '–'}</span>
+                              )}
+                              {col.key === 'address' && (
+                                <span className="text-muted-foreground">{contact.address || '–'}</span>
+                              )}
+                              {col.key === 'postalCode' && (
+                                <span className="text-muted-foreground">{contact.postal_code || '–'}</span>
                               )}
                               {col.key === 'interest' && (
                                 <InterestBadge interest={contact.interest} />
@@ -521,6 +577,25 @@ const Deals = () => {
                                 <span className="text-muted-foreground">
                                   {contact.opener?.full_name || contact.opener?.email || '–'}
                                 </span>
+                              )}
+                              {col.key === 'organizations' && (
+                                <div className="flex flex-wrap gap-1">
+                                  {contact.organizations && contact.organizations.length > 0 ? (
+                                    contact.organizations.map((org) => (
+                                      <span
+                                        key={org.id}
+                                        className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-medium"
+                                      >
+                                        {org.name}
+                                      </span>
+                                    ))
+                                  ) : (
+                                    <span className="text-muted-foreground text-sm">–</span>
+                                  )}
+                                </div>
+                              )}
+                              {col.key === 'region' && (
+                                <span className="text-muted-foreground">{contact.region?.name || '–'}</span>
                               )}
                               {col.key === 'creditStatus' && (
                                 creditStatus ? (
@@ -590,10 +665,10 @@ const Deals = () => {
         </CardContent>
       </Card>
 
-      {/* Selection info bar */}
+      {/* Selection info bar - sticky to bottom of viewport, centered in main content area */}
       {selectedDeals.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
-          <div className="flex items-center gap-4 px-6 py-3 rounded-full bg-primary text-primary-foreground shadow-lg">
+        <div className="fixed bottom-6 left-64 right-0 z-50 flex justify-center pointer-events-none">
+          <div className="flex items-center gap-4 px-6 py-3 rounded-full bg-primary text-primary-foreground shadow-lg pointer-events-auto animate-in slide-in-from-bottom-4 duration-300">
             <span className="font-medium">{selectedDeals.size} deals markerade</span>
             {(profile?.role === 'admin' || profile?.role === 'teamleader') && (
               <Button
