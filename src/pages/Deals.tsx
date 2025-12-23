@@ -11,9 +11,10 @@ import { InterestBadge } from '@/components/ui/interest-badge';
 import { EmptyState } from '@/components/ui/empty-state';
 import { CreateDealDialog } from '@/components/deals/CreateDealDialog';
 import { DealDetailsDialog } from '@/components/deals/DealDetailsDialog';
+import { AssignToCloserDialog } from '@/components/deals/AssignToCloserDialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Search, Filter, FileText, TrendingUp, Calendar, ChevronLeft, ChevronRight, Settings, GripVertical } from 'lucide-react';
+import { Search, Filter, FileText, TrendingUp, Calendar, ChevronLeft, ChevronRight, Settings, GripVertical, UserCheck } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, subMonths, addMonths } from 'date-fns';
 import { sv } from 'date-fns/locale';
 
@@ -42,6 +43,7 @@ interface Contact {
   date_sent: string;
   interest: 'sun' | 'battery' | 'sun_battery';
   opener_id: string;
+  region_id: string | null;
   opener?: { email: string; full_name: string | null };
   organizations?: { id: string; name: string }[];
   credit_requests?: { status: 'pending' | 'approved' | 'denied'; organization_id: string }[];
@@ -81,6 +83,9 @@ const Deals = () => {
   
   // Multi-select state
   const [selectedDeals, setSelectedDeals] = useState<Set<string>>(new Set());
+  
+  // Assign dialog state
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   
   // Drag state
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -590,16 +595,43 @@ const Deals = () => {
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
           <div className="flex items-center gap-4 px-6 py-3 rounded-full bg-primary text-primary-foreground shadow-lg">
             <span className="font-medium">{selectedDeals.size} deals markerade</span>
+            {(profile?.role === 'admin' || profile?.role === 'teamleader') && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setAssignDialogOpen(true)}
+                className="gap-2"
+              >
+                <UserCheck className="w-4 h-4" />
+                Tilldela closer
+              </Button>
+            )}
             <Button
-              variant="secondary"
+              variant="outline"
               size="sm"
               onClick={() => setSelectedDeals(new Set())}
+              className="bg-transparent border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10"
             >
               Avmarkera alla
             </Button>
           </div>
         </div>
       )}
+
+      <AssignToCloserDialog
+        open={assignDialogOpen}
+        onOpenChange={setAssignDialogOpen}
+        selectedContactIds={[...selectedDeals]}
+        contactsData={contacts.map(c => ({
+          id: c.id,
+          region_id: c.region_id,
+          organizations: c.organizations || [],
+        }))}
+        onAssigned={() => {
+          fetchData();
+          setSelectedDeals(new Set());
+        }}
+      />
 
       <DealDetailsDialog
         contact={selectedContact}
