@@ -19,7 +19,7 @@ import { Search, Filter, FileText, TrendingUp, Calendar, ChevronLeft, ChevronRig
 import { format, startOfMonth, endOfMonth, subMonths, addMonths } from 'date-fns';
 import { sv } from 'date-fns/locale';
 
-type ColumnKey = 'name' | 'email' | 'phone' | 'address' | 'postalCode' | 'interest' | 'date' | 'opener' | 'organizations' | 'creditStatus' | 'region';
+type ColumnKey = 'name' | 'email' | 'phone' | 'address' | 'postalCode' | 'interest' | 'date' | 'opener' | 'bolag1' | 'bolag2' | 'bolag3' | 'bolag4' | 'creditStatus' | 'region';
 
 interface ColumnConfig {
   key: ColumnKey;
@@ -35,7 +35,10 @@ const DEFAULT_COLUMNS: ColumnConfig[] = [
   { key: 'interest', label: 'Intresse' },
   { key: 'date', label: 'Datum' },
   { key: 'opener', label: 'Opener' },
-  { key: 'organizations', label: 'Organisationer' },
+  { key: 'bolag1', label: 'Bolag 1' },
+  { key: 'bolag2', label: 'Bolag 2' },
+  { key: 'bolag3', label: 'Bolag 3' },
+  { key: 'bolag4', label: 'Bolag 4' },
   { key: 'region', label: 'Region' },
   { key: 'creditStatus', label: 'Kredit Status' },
 ];
@@ -90,7 +93,7 @@ const Deals = () => {
   
   // Column management with ordering
   const [columnOrder, setColumnOrder] = useState<ColumnConfig[]>(DEFAULT_COLUMNS);
-  const [visibleColumns, setVisibleColumns] = useState<Set<ColumnKey>>(new Set(['name', 'email', 'phone', 'interest', 'date', 'opener', 'creditStatus']));
+  const [visibleColumns, setVisibleColumns] = useState<Set<ColumnKey>>(new Set(['name', 'email', 'phone', 'interest', 'date', 'opener', 'bolag1', 'bolag2', 'bolag3', 'bolag4', 'creditStatus']));
   
   // Multi-select state
   const [selectedDeals, setSelectedDeals] = useState<Set<string>>(new Set());
@@ -579,21 +582,25 @@ const Deals = () => {
                                   {contact.opener?.full_name || contact.opener?.email || '–'}
                                 </span>
                               )}
-                              {col.key === 'organizations' && (
-                                <div className="flex flex-wrap gap-1">
-                                  {contact.organizations && contact.organizations.length > 0 ? (
-                                    contact.organizations.map((org) => (
-                                      <span
-                                        key={org.id}
-                                        className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-medium"
-                                      >
-                                        {org.name}
-                                      </span>
-                                    ))
-                                  ) : (
-                                    <span className="text-muted-foreground text-sm">–</span>
-                                  )}
-                                </div>
+                              {col.key === 'bolag1' && (
+                                <span className="text-muted-foreground">
+                                  {contact.organizations?.[0]?.name || '–'}
+                                </span>
+                              )}
+                              {col.key === 'bolag2' && (
+                                <span className="text-muted-foreground">
+                                  {contact.organizations?.[1]?.name || '–'}
+                                </span>
+                              )}
+                              {col.key === 'bolag3' && (
+                                <span className="text-muted-foreground">
+                                  {contact.organizations?.[2]?.name || '–'}
+                                </span>
+                              )}
+                              {col.key === 'bolag4' && (
+                                <span className="text-muted-foreground">
+                                  {contact.organizations?.[3]?.name || '–'}
+                                </span>
                               )}
                               {col.key === 'region' && (
                                 <span className="text-muted-foreground">{contact.region?.name || '–'}</span>
