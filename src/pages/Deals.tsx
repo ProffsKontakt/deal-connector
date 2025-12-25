@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import ReactDOM from 'react-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -665,9 +666,9 @@ const Deals = () => {
         </CardContent>
       </Card>
 
-      {/* Selection info bar - sticky to bottom of viewport, centered in main content area */}
-      {selectedDeals.size > 0 && (
-        <div className="fixed bottom-6 left-64 right-0 z-50 flex justify-center pointer-events-none">
+      {/* Selection info bar - rendered via portal to ensure proper fixed positioning */}
+      {selectedDeals.size > 0 && ReactDOM.createPortal(
+        <div className="fixed bottom-6 left-0 right-0 z-[9999] flex justify-center pointer-events-none" style={{ marginLeft: '16rem' }}>
           <div className="flex items-center gap-4 px-6 py-3 rounded-full bg-primary text-primary-foreground shadow-lg pointer-events-auto animate-in slide-in-from-bottom-4 duration-300">
             <span className="font-medium">{selectedDeals.size} deals markerade</span>
             {(profile?.role === 'admin' || profile?.role === 'teamleader') && (
@@ -690,7 +691,8 @@ const Deals = () => {
               Avmarkera alla
             </Button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       <AssignToCloserDialog
