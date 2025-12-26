@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -15,9 +15,13 @@ import { DealDetailsDialog } from '@/components/deals/DealDetailsDialog';
 import { AssignToCloserDialog } from '@/components/deals/AssignToCloserDialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Search, Filter, FileText, TrendingUp, Calendar, ChevronLeft, ChevronRight, Settings, GripVertical, UserCheck } from 'lucide-react';
+import { toast } from 'sonner';
+import { Search, Filter, FileText, TrendingUp, Calendar, ChevronLeft, ChevronRight, Settings, GripVertical, UserCheck, CreditCard, Check, X, Inbox } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, subMonths, addMonths } from 'date-fns';
 import { sv } from 'date-fns/locale';
+import type { Database } from '@/integrations/supabase/types';
+
+type CreditStatus = Database['public']['Enums']['credit_status'];
 
 type ColumnKey = 'name' | 'email' | 'phone' | 'address' | 'postalCode' | 'interest' | 'date' | 'opener' | 'bolag1' | 'bolag2' | 'bolag3' | 'bolag4' | 'creditStatus' | 'region';
 
@@ -75,11 +79,22 @@ interface PriceHistory {
   effective_until: string | null;
 }
 
+interface CreditRequest {
+  id: string;
+  status: CreditStatus;
+  reason: string | null;
+  created_at: string;
+  contact: { email: string } | null;
+  organization: { name: string } | null;
+  requested_by_profile: { email: string } | null;
+}
+
 const Deals = () => {
   const { profile } = useAuth();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [priceHistory, setPriceHistory] = useState<PriceHistory[]>([]);
+  const [creditRequests, setCreditRequests] = useState<CreditRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterOrg, setFilterOrg] = useState<string>('all');
@@ -190,9 +205,38 @@ const Deals = () => {
       }));
 
       setContacts(transformed);
+
+      // Fetch credit requests for admin
+      if (profile?.role === 'admin') {
+        const { data: creditsRes } = await supabase
+          .from('credit_requests')
+          .select(`
+            *,
+            contact:contacts(email),
+            organization:organizations(name),
+            requested_by_profile:profiles!credit_requests_requested_by_fkey(email)
+          `)
+          .order('created_at', { ascending: false });
+        setCreditRequests(creditsRes as CreditRequest[] || []);
+      }
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCreditAction = async (requestId: string, status: 'approved' | 'denied') => {
+    const { error } = await supabase
+      .from('credit_requests')
+      .update({ status })
+      .eq('id', requestId);
+
+    if (error) {
+      toast.error('Kunde inte uppdatera kreditbegäran');
+      return;
+    }
+
+    toast.success(status === 'approved' ? 'Kredit godkänd' : 'Kredit nekad');
+    fetchData();
   };
 
   const filteredContacts = contacts.filter((contact) => {
@@ -672,6 +716,62 @@ const Deals = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Credit Requests Section - Admin Only */}
+      {profile?.role === 'admin' && (
+        <Card className="glass-card">
+          <CardHeader className="pb-4">
+            <div className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5 text-primary" />
+              <CardTitle className="text-xl">Kreditförfrågningar</CardTitle>
+            </div>
+            <CardDescription>Granska och hantera inkomna kreditförfrågningar</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {creditRequests.length === 0 ? (
+              <EmptyState
+                icon={Inbox}
+                title="Inga kreditbegäranden"
+                description="Det finns inga kreditförfrågningar att hantera just nu"
+              />
+            ) : (
+              <div className="rounded-xl border border-border overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/30 hover:bg-muted/30">
+                      <TableHead className="font-semibold">Kontakt</TableHead>
+                      <TableHead className="font-semibold">Organisation</TableHead>
+                      <TableHead className="font-semibold">Anledning</TableHead>
+                      <TableHead className="font-semibold">Datum</TableHead>
+                      <TableHead className="font-semibold">Status</TableHead>
+                      <TableHead className="w-28 font-semibold">Åtgärder</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {creditRequests.map((request) => (
+                      <TableRow key={request.id}>
+                        <TableCell className="font-medium">{request.contact?.email || '–'}</TableCell>
+                        <TableCell className="text-muted-foreground">{request.organization?.name || '–'}</TableCell>
+                        <TableCell className="text-muted-foreground max-w-xs truncate">{request.reason || '–'}</TableCell>
+                        <TableCell className="text-muted-foreground">{format(new Date(request.created_at), 'dd MMM yyyy', { locale: sv })}</TableCell>
+                        <TableCell><StatusBadge status={request.status} /></TableCell>
+                        <TableCell>
+                          {request.status === 'pending' && (
+                            <div className="flex gap-1.5">
+                              <Button size="sm" variant="outline" className="h-8 w-8 p-0 text-success hover:bg-success/10" onClick={() => handleCreditAction(request.id, 'approved')}><Check className="w-4 h-4" /></Button>
+                              <Button size="sm" variant="outline" className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10" onClick={() => handleCreditAction(request.id, 'denied')}><X className="w-4 h-4" /></Button>
+                            </div>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Selection info bar - rendered via portal to ensure proper fixed positioning */}
       {selectedDeals.size > 0 && ReactDOM.createPortal(
