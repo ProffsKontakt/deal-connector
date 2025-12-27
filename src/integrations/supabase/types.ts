@@ -489,6 +489,7 @@ export type Database = {
           price_per_battery_deal: number | null
           price_per_site_visit: number | null
           price_per_solar_deal: number | null
+          sales_consultant_lead_type: string | null
           status: Database["public"]["Enums"]["organization_status"]
           updated_at: string
         }
@@ -509,6 +510,7 @@ export type Database = {
           price_per_battery_deal?: number | null
           price_per_site_visit?: number | null
           price_per_solar_deal?: number | null
+          sales_consultant_lead_type?: string | null
           status?: Database["public"]["Enums"]["organization_status"]
           updated_at?: string
         }
@@ -529,6 +531,7 @@ export type Database = {
           price_per_battery_deal?: number | null
           price_per_site_visit?: number | null
           price_per_solar_deal?: number | null
+          sales_consultant_lead_type?: string | null
           status?: Database["public"]["Enums"]["organization_status"]
           updated_at?: string
         }

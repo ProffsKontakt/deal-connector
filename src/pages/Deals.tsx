@@ -23,7 +23,7 @@ import type { Database } from '@/integrations/supabase/types';
 
 type CreditStatus = Database['public']['Enums']['credit_status'];
 
-type ColumnKey = 'name' | 'email' | 'phone' | 'address' | 'postalCode' | 'interest' | 'date' | 'opener' | 'bolag1' | 'bolag2' | 'bolag3' | 'bolag4' | 'creditStatus' | 'region';
+type ColumnKey = 'name' | 'email' | 'phone' | 'address' | 'postalCode' | 'interest' | 'date' | 'opener' | 'bolag1' | 'bolag2' | 'bolag3' | 'bolag4' | 'totalRevenue' | 'creditStatus' | 'region';
 
 interface ColumnConfig {
   key: ColumnKey;
@@ -43,6 +43,7 @@ const DEFAULT_COLUMNS: ColumnConfig[] = [
   { key: 'bolag2', label: 'Bolag 2' },
   { key: 'bolag3', label: 'Bolag 3' },
   { key: 'bolag4', label: 'Bolag 4' },
+  { key: 'totalRevenue', label: 'Total intäkt' },
   { key: 'region', label: 'Region' },
   { key: 'creditStatus', label: 'Kredit Status' },
 ];
@@ -59,7 +60,7 @@ interface Contact {
   opener_id: string;
   region_id: string | null;
   opener?: { email: string; full_name: string | null };
-  organizations?: { id: string; name: string }[];
+  organizations?: { id: string; name: string; price_per_solar_deal: number | null; price_per_battery_deal: number | null; is_sales_consultant?: boolean; sales_consultant_lead_type?: string | null }[];
   credit_requests?: { status: 'pending' | 'approved' | 'denied'; organization_id: string }[];
   region?: { id: string; name: string };
 }
@@ -69,6 +70,8 @@ interface Organization {
   name: string;
   price_per_solar_deal: number | null;
   price_per_battery_deal: number | null;
+  is_sales_consultant?: boolean;
+  sales_consultant_lead_type?: string | null;
 }
 
 interface PriceHistory {
@@ -108,7 +111,7 @@ const Deals = () => {
   
   // Column management with ordering
   const [columnOrder, setColumnOrder] = useState<ColumnConfig[]>(DEFAULT_COLUMNS);
-  const [visibleColumns, setVisibleColumns] = useState<Set<ColumnKey>>(new Set(['name', 'email', 'phone', 'interest', 'date', 'opener', 'bolag1', 'bolag2', 'bolag3', 'bolag4', 'creditStatus']));
+  const [visibleColumns, setVisibleColumns] = useState<Set<ColumnKey>>(new Set(['name', 'email', 'phone', 'interest', 'date', 'opener', 'bolag1', 'bolag2', 'bolag3', 'bolag4', 'totalRevenue', 'creditStatus']));
   
   // Multi-select state
   const [selectedDeals, setSelectedDeals] = useState<Set<string>>(new Set());
@@ -164,8 +167,8 @@ const Deals = () => {
       // Fetch organizations with prices
       const { data: orgsData } = await supabase
         .from('organizations')
-        .select('id, name, price_per_solar_deal, price_per_battery_deal');
-      setOrganizations(orgsData || []);
+        .select('id, name, price_per_solar_deal, price_per_battery_deal, is_sales_consultant, sales_consultant_lead_type');
+      setOrganizations((orgsData as Organization[]) || []);
 
       // Fetch regions
       const { data: regionsData } = await supabase
@@ -186,7 +189,7 @@ const Deals = () => {
         .select(`
           *,
           opener:profiles!contacts_opener_id_fkey(email, full_name),
-          contact_organizations(organization:organizations(id, name)),
+          contact_organizations(organization:organizations(id, name, price_per_solar_deal, price_per_battery_deal, is_sales_consultant, sales_consultant_lead_type)),
           credit_requests(status, organization_id),
           region:regions(id, name)
         `)
@@ -341,6 +344,38 @@ const Deals = () => {
   const getLatestCreditStatus = (contact: Contact) => {
     if (!contact.credit_requests || contact.credit_requests.length === 0) return null;
     return contact.credit_requests[0].status;
+  };
+
+  // Calculate total revenue for a single contact based on its assigned organizations
+  // Excludes organizations where we are sales consultant for matching lead type
+  const getContactTotalRevenue = (contact: Contact): number => {
+    if (!contact.organizations || contact.organizations.length === 0) return 0;
+    
+    let total = 0;
+    const contactDate = new Date(contact.date_sent);
+    
+    contact.organizations.forEach(org => {
+      // Check if this org is a sales consultant for this lead type
+      const isSalesConsultantForLeadType = org.is_sales_consultant && 
+        org.sales_consultant_lead_type === contact.interest;
+      
+      // Skip if we're selling on this ourselves
+      if (isSalesConsultantForLeadType) return;
+      
+      // Check if there's an approved credit for this org on this contact
+      const hasApprovedCredit = contact.credit_requests?.some(
+        cr => cr.organization_id === org.id && cr.status === 'approved'
+      );
+      
+      // Skip if credited
+      if (hasApprovedCredit) return;
+      
+      // Get price for this lead
+      const price = getPriceAtDate(org.id, contact.interest, contactDate);
+      total += price;
+    });
+    
+    return total;
   };
 
   const handleContactClick = (contact: Contact) => {
@@ -648,6 +683,11 @@ const Deals = () => {
                               )}
                               {col.key === 'region' && (
                                 <span className="text-muted-foreground">{contact.region?.name || '–'}</span>
+                              )}
+                              {col.key === 'totalRevenue' && (
+                                <span className="font-medium text-primary">
+                                  {getContactTotalRevenue(contact).toLocaleString('sv-SE')} kr
+                                </span>
                               )}
                               {col.key === 'creditStatus' && (
                                 creditStatus ? (

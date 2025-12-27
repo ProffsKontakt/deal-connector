@@ -120,10 +120,10 @@ const MinSida = () => {
           <div className="p-2 rounded-lg bg-primary/10">
             <User className="w-6 h-6 text-primary" />
           </div>
-          <h1 className="page-title">Min Sida</h1>
+          <h1 className="page-title">Admin Dashboard</h1>
         </div>
         <p className="page-description">
-          Välkommen tillbaka, <span className="text-foreground font-medium">{profile?.full_name || profile?.email}</span>
+          Välkommen tillbaka, <span className="text-foreground font-medium">{profile?.full_name || profile?.email}</span> – Översikt över hela verksamheten
         </p>
       </div>
 
