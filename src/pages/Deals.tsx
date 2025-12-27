@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableFooter, TableHeader, TableRow } from '@/components/ui/table';
+import { ResizableTableHead } from '@/components/ui/resizable-table';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { InterestBadge } from '@/components/ui/interest-badge';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -549,20 +550,20 @@ const Deals = () => {
                   <TableHeader>
                     <TableRow className="bg-muted/30 hover:bg-muted/30">
                       {/* Select all checkbox */}
-                      <TableHead className="w-12">
+                      <ResizableTableHead className="w-12" minWidth={48}>
                         <Checkbox
                           checked={selectedDeals.size === filteredContacts.length && filteredContacts.length > 0}
                           onCheckedChange={handleSelectAll}
                           aria-label="Markera alla"
                         />
-                      </TableHead>
+                      </ResizableTableHead>
                       {orderedVisibleColumns.map((col) => (
-                        <TableHead key={col.key} className="font-semibold whitespace-nowrap">
+                        <ResizableTableHead key={col.key} className="font-semibold whitespace-nowrap">
                           {col.label}
-                        </TableHead>
+                        </ResizableTableHead>
                       ))}
                       {/* Always show settings cog */}
-                      <TableHead className="w-12 sticky right-0 bg-muted/30">
+                      <ResizableTableHead className="w-12 sticky right-0 bg-muted/30" minWidth={48}>
                         <Popover>
                           <PopoverTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-7 w-7">
@@ -598,7 +599,7 @@ const Deals = () => {
                             </div>
                           </PopoverContent>
                         </Popover>
-                      </TableHead>
+                      </ResizableTableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -779,12 +780,12 @@ const Deals = () => {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/30 hover:bg-muted/30">
-                      <TableHead className="font-semibold">Kontakt</TableHead>
-                      <TableHead className="font-semibold">Organisation</TableHead>
-                      <TableHead className="font-semibold">Anledning</TableHead>
-                      <TableHead className="font-semibold">Datum</TableHead>
-                      <TableHead className="font-semibold">Status</TableHead>
-                      <TableHead className="w-28 font-semibold">Åtgärder</TableHead>
+                      <ResizableTableHead className="font-semibold">Kontakt</ResizableTableHead>
+                      <ResizableTableHead className="font-semibold">Organisation</ResizableTableHead>
+                      <ResizableTableHead className="font-semibold">Anledning</ResizableTableHead>
+                      <ResizableTableHead className="font-semibold">Datum</ResizableTableHead>
+                      <ResizableTableHead className="font-semibold">Status</ResizableTableHead>
+                      <ResizableTableHead className="w-28 font-semibold">Åtgärder</ResizableTableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>

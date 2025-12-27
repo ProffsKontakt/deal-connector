@@ -6,7 +6,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table';
+import { ResizableTableHead } from '@/components/ui/resizable-table';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { sv } from 'date-fns/locale';
@@ -176,12 +177,12 @@ export function PartnerLeadsDialog({
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50">
-                    <TableHead>Datum</TableHead>
-                    <TableHead>Kund</TableHead>
-                    <TableHead>Kontakt</TableHead>
-                    <TableHead>Typ</TableHead>
-                    <TableHead>Opener</TableHead>
-                    <TableHead className="text-right">Pris</TableHead>
+                    <ResizableTableHead>Datum</ResizableTableHead>
+                    <ResizableTableHead>Kund</ResizableTableHead>
+                    <ResizableTableHead>Kontakt</ResizableTableHead>
+                    <ResizableTableHead>Typ</ResizableTableHead>
+                    <ResizableTableHead>Opener</ResizableTableHead>
+                    <ResizableTableHead className="text-right">Pris</ResizableTableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

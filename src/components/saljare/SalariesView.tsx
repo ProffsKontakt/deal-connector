@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table';
+import { ResizableTableHead } from '@/components/ui/resizable-table';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -328,10 +329,10 @@ export const SalariesView = () => {
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/50 hover:bg-muted/50">
-                        <TableHead className="font-semibold">Namn</TableHead>
-                        <TableHead className="text-center font-semibold">Stängda affärer</TableHead>
-                        <TableHead className="text-right font-semibold">Provision</TableHead>
-                        <TableHead className="text-right font-semibold">Inkl. arbetsgivaravgift</TableHead>
+                        <ResizableTableHead className="font-semibold">Namn</ResizableTableHead>
+                        <ResizableTableHead className="text-center font-semibold">Stängda affärer</ResizableTableHead>
+                        <ResizableTableHead className="text-right font-semibold">Provision</ResizableTableHead>
+                        <ResizableTableHead className="text-right font-semibold">Inkl. arbetsgivaravgift</ResizableTableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -393,11 +394,11 @@ export const SalariesView = () => {
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/50 hover:bg-muted/50">
-                        <TableHead className="font-semibold">Namn</TableHead>
-                        <TableHead className="text-center font-semibold">Kvalificerade leads</TableHead>
-                        <TableHead className="text-right font-semibold">Provision/lead</TableHead>
-                        <TableHead className="text-right font-semibold">Provision</TableHead>
-                        <TableHead className="text-right font-semibold">Inkl. arbetsgivaravgift</TableHead>
+                        <ResizableTableHead className="font-semibold">Namn</ResizableTableHead>
+                        <ResizableTableHead className="text-center font-semibold">Kvalificerade leads</ResizableTableHead>
+                        <ResizableTableHead className="text-right font-semibold">Provision/lead</ResizableTableHead>
+                        <ResizableTableHead className="text-right font-semibold">Provision</ResizableTableHead>
+                        <ResizableTableHead className="text-right font-semibold">Inkl. arbetsgivaravgift</ResizableTableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -473,10 +474,10 @@ export const SalariesView = () => {
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/50">
-                        <TableHead>Lead</TableHead>
-                        <TableHead>Datum</TableHead>
-                        <TableHead>Partners</TableHead>
-                        <TableHead className="text-right">Provision</TableHead>
+                        <ResizableTableHead>Lead</ResizableTableHead>
+                        <ResizableTableHead>Datum</ResizableTableHead>
+                        <ResizableTableHead>Partners</ResizableTableHead>
+                        <ResizableTableHead className="text-right">Provision</ResizableTableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -546,11 +547,11 @@ export const SalariesView = () => {
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/50">
-                        <TableHead>Kund</TableHead>
-                        <TableHead>Partner</TableHead>
-                        <TableHead>Stängd</TableHead>
-                        <TableHead className="text-right">Fakturerbart</TableHead>
-                        <TableHead className="text-right">Provision</TableHead>
+                        <ResizableTableHead>Kund</ResizableTableHead>
+                        <ResizableTableHead>Partner</ResizableTableHead>
+                        <ResizableTableHead>Stängd</ResizableTableHead>
+                        <ResizableTableHead className="text-right">Fakturerbart</ResizableTableHead>
+                        <ResizableTableHead className="text-right">Provision</ResizableTableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>

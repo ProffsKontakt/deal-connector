@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table';
+import { ResizableTableHead } from '@/components/ui/resizable-table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -315,11 +316,11 @@ const Admin = () => {
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/30 hover:bg-muted/30">
-                        <TableHead className="font-semibold">Partner</TableHead>
-                        <TableHead className="font-semibold">Sol-pris</TableHead>
-                        <TableHead className="font-semibold">Batteri-pris</TableHead>
-                        <TableHead className="font-semibold">Platsbesök-pris</TableHead>
-                        <TableHead className="w-36 font-semibold">Åtgärder</TableHead>
+                        <ResizableTableHead className="font-semibold">Partner</ResizableTableHead>
+                        <ResizableTableHead className="font-semibold">Sol-pris</ResizableTableHead>
+                        <ResizableTableHead className="font-semibold">Batteri-pris</ResizableTableHead>
+                        <ResizableTableHead className="font-semibold">Platsbesök-pris</ResizableTableHead>
+                        <ResizableTableHead className="w-36 font-semibold">Åtgärder</ResizableTableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -441,10 +442,10 @@ const Admin = () => {
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/30 hover:bg-muted/30">
-                        <TableHead className="font-semibold">E-post</TableHead>
-                        <TableHead className="font-semibold">Namn</TableHead>
-                        <TableHead className="font-semibold">Roll</TableHead>
-                        <TableHead className="w-16 font-semibold">Åtgärd</TableHead>
+                        <ResizableTableHead className="font-semibold">E-post</ResizableTableHead>
+                        <ResizableTableHead className="font-semibold">Namn</ResizableTableHead>
+                        <ResizableTableHead className="font-semibold">Roll</ResizableTableHead>
+                        <ResizableTableHead className="w-16 font-semibold">Åtgärd</ResizableTableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -512,12 +513,12 @@ const Admin = () => {
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/30 hover:bg-muted/30">
-                        <TableHead className="font-semibold">Kontakt</TableHead>
-                        <TableHead className="font-semibold">Organisation</TableHead>
-                        <TableHead className="font-semibold">Anledning</TableHead>
-                        <TableHead className="font-semibold">Datum</TableHead>
-                        <TableHead className="font-semibold">Status</TableHead>
-                        <TableHead className="w-28 font-semibold">Åtgärder</TableHead>
+                        <ResizableTableHead className="font-semibold">Kontakt</ResizableTableHead>
+                        <ResizableTableHead className="font-semibold">Organisation</ResizableTableHead>
+                        <ResizableTableHead className="font-semibold">Anledning</ResizableTableHead>
+                        <ResizableTableHead className="font-semibold">Datum</ResizableTableHead>
+                        <ResizableTableHead className="font-semibold">Status</ResizableTableHead>
+                        <ResizableTableHead className="w-28 font-semibold">Åtgärder</ResizableTableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
