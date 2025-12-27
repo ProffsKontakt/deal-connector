@@ -112,7 +112,7 @@ const Deals = () => {
   
   // Column management with ordering
   const [columnOrder, setColumnOrder] = useState<ColumnConfig[]>(DEFAULT_COLUMNS);
-  const [visibleColumns, setVisibleColumns] = useState<Set<ColumnKey>>(new Set(['name', 'email', 'phone', 'interest', 'date', 'opener', 'bolag1', 'bolag2', 'bolag3', 'bolag4', 'totalRevenue', 'creditStatus']));
+  const [visibleColumns, setVisibleColumns] = useState<Set<ColumnKey>>(new Set(['name', 'email', 'phone', 'interest', 'date', 'opener', 'bolag1', 'bolag2', 'bolag3', 'bolag4', 'totalRevenue', 'region', 'creditStatus']));
   
   // Multi-select state
   const [selectedDeals, setSelectedDeals] = useState<Set<string>>(new Set());
