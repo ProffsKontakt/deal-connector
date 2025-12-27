@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { Plus, Trash2, Building2, Settings2, DollarSign, Percent, Calculator, Package, MapPin } from 'lucide-react';
+import { Plus, Trash2, Building2, Settings2, DollarSign, Percent, Calculator, Package, MapPin, CreditCard } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 
 interface CostSegment {
@@ -79,6 +79,7 @@ export const EditPartnerDialog = ({ partner, open, onOpenChange, onUpdated }: Ed
     default_customer_price: '78000',
     allow_manual_calculation: false,
     sales_consultant_lead_type: '' as string,
+    can_request_credits: true,
     // For "Allt över" calculation preview
     preview_total_price: '78000',
     preview_property_owners: '1',
@@ -535,6 +536,25 @@ export const EditPartnerDialog = ({ partner, open, onOpenChange, onUpdated }: Ed
                 />
               </div>
             </div>
+          </div>
+
+          <Separator />
+
+          {/* Credit Permission Toggle */}
+          <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
+            <div>
+              <h3 className="font-medium flex items-center gap-2">
+                <CreditCard className="h-4 w-4" />
+                Krediträttigheter
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Partner kan skicka kreditförfrågningar för leads
+              </p>
+            </div>
+            <Switch
+              checked={formData.can_request_credits}
+              onCheckedChange={(checked) => setFormData(prev => ({ ...prev, can_request_credits: checked }))}
+            />
           </div>
 
           <Separator />

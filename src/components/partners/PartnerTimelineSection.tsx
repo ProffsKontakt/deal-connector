@@ -25,9 +25,14 @@ interface ForecastData {
   month: string;
   activePartners: number;
   projectedLeads: number;
+  hasQuota: boolean;
 }
 
-export function PartnerTimelineSection() {
+interface PartnerTimelineSectionProps {
+  selectedMonth?: string;
+}
+
+export function PartnerTimelineSection({ selectedMonth }: PartnerTimelineSectionProps) {
   const [upcomingEvents, setUpcomingEvents] = useState<TimelineEvent[]>([]);
   const [forecast, setForecast] = useState<ForecastData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,7 +65,7 @@ export function PartnerTimelineSection() {
         })));
       }
 
-      // Calculate forecast for next 3 months
+      // Calculate forecast for next 3 months using actual quota data
       const { data: activeOrgs } = await supabase
         .from('organizations')
         .select('id')
@@ -68,12 +73,22 @@ export function PartnerTimelineSection() {
 
       const activeCount = activeOrgs?.length || 0;
       
-      // Get average leads per partner (rough estimate)
-      const avgLeadsPerPartner = 15; // This could be calculated from historical data
-
+      // Get quota data for the next 3 months
       const forecastData: ForecastData[] = [];
       for (let i = 0; i < 3; i++) {
         const month = addMonths(new Date(), i);
+        const periodStart = format(startOfMonth(month), 'yyyy-MM-dd');
+        
+        // Fetch quotas for this month
+        const { data: quotaData } = await supabase
+          .from('organization_lead_quotas')
+          .select('quota_amount')
+          .eq('period_type', 'monthly')
+          .eq('period_start', periodStart);
+        
+        const totalQuota = quotaData?.reduce((sum, q) => sum + (q.quota_amount || 0), 0) || 0;
+        const hasQuota = quotaData && quotaData.length > 0;
+        
         let adjustedCount = activeCount;
 
         // Adjust based on scheduled events
@@ -88,7 +103,8 @@ export function PartnerTimelineSection() {
         forecastData.push({
           month: format(month, 'MMMM yyyy', { locale: sv }),
           activePartners: Math.max(0, adjustedCount),
-          projectedLeads: Math.max(0, adjustedCount) * avgLeadsPerPartner,
+          projectedLeads: hasQuota ? totalQuota : 0,
+          hasQuota,
         });
       }
       setForecast(forecastData);
@@ -147,11 +163,14 @@ export function PartnerTimelineSection() {
                   <p className="text-xs text-muted-foreground">aktiva partners</p>
                 </div>
                 <div className="mt-2 pt-2 border-t">
-                  <p className="text-sm">
-                    <span className="text-muted-foreground">~</span>
-                    <span className="font-medium">{f.projectedLeads}</span>
-                    <span className="text-muted-foreground"> leads</span>
-                  </p>
+                  {f.hasQuota ? (
+                    <p className="text-sm">
+                      <span className="font-medium">{f.projectedLeads}</span>
+                      <span className="text-muted-foreground"> leads (kvot)</span>
+                    </p>
+                  ) : (
+                    <p className="text-sm text-amber-500">Kvot ej angiven</p>
+                  )}
                 </div>
               </CardContent>
             </Card>

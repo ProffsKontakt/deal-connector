@@ -1,16 +1,26 @@
+import { useState, useEffect } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 import { FileText, CreditCard, User, LogOut, Settings, Sun, Moon, Users, Handshake } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
 import logoDark from "@/assets/logo-dark.png";
 import logoLight from "@/assets/logo-light.png";
 
-const navItems = [
+interface NavItem {
+  to: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  roles: string[];
+  requiresCreditPermission?: boolean;
+}
+
+const navItems: NavItem[] = [
   { to: "/admin", label: "Admin", icon: User, roles: ["admin"] },
   { to: "/deals", label: "Deals", icon: FileText, roles: ["admin", "teamleader", "opener", "organization", "closer"] },
-  { to: "/kreditera", label: "Kreditera", icon: CreditCard, roles: ["organization"] },
+  { to: "/kreditera", label: "Kreditera", icon: CreditCard, roles: ["organization"], requiresCreditPermission: true },
   { to: "/saljare", label: "Säljare", icon: Users, roles: ["admin"] },
   { to: "/partners", label: "Partners", icon: Handshake, roles: ["admin"] },
   { to: "/installningar", label: "Inställningar", icon: Settings, roles: ["admin"] },
@@ -20,6 +30,25 @@ export const Sidebar = () => {
   const { profile, signOut } = useAuth();
   const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
+  const [canRequestCredits, setCanRequestCredits] = useState<boolean>(true);
+
+  useEffect(() => {
+    if (profile?.role === 'organization' && profile?.organization_id) {
+      fetchCreditPermission();
+    }
+  }, [profile]);
+
+  const fetchCreditPermission = async () => {
+    if (!profile?.organization_id) return;
+    
+    const { data } = await supabase
+      .from('organizations')
+      .select('can_request_credits')
+      .eq('id', profile.organization_id)
+      .single();
+    
+    setCanRequestCredits(data?.can_request_credits ?? true);
+  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -30,7 +59,19 @@ export const Sidebar = () => {
     setTheme(theme === "dark" ? "light" : "dark");
   };
 
-  const filteredNav = navItems.filter((item) => profile?.role && item.roles.includes(profile.role));
+  const filteredNav = navItems.filter((item) => {
+    // Check role permission
+    if (!profile?.role || !item.roles.includes(profile.role)) {
+      return false;
+    }
+    
+    // Check credit permission for Kreditera menu item
+    if (item.requiresCreditPermission && !canRequestCredits) {
+      return false;
+    }
+    
+    return true;
+  });
 
   const getRoleLabel = (role: string) => {
     const labels: Record<string, string> = {

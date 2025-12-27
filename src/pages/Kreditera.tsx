@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { CreditCard, AlertTriangle, Send } from 'lucide-react';
+import { CreditCard, AlertTriangle, Send, ShieldX } from 'lucide-react';
 import { differenceInDays } from 'date-fns';
 
 interface Contact {
@@ -16,6 +16,10 @@ interface Contact {
   email: string;
   date_sent: string;
   interest: string;
+}
+
+interface OrganizationSettings {
+  can_request_credits: boolean;
 }
 
 const Kreditera = () => {
@@ -28,14 +32,37 @@ const Kreditera = () => {
   const [submitting, setSubmitting] = useState(false);
   const [showWarning, setShowWarning] = useState(false);
   const [pendingSubmit, setPendingSubmit] = useState(false);
+  const [canRequestCredits, setCanRequestCredits] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (profile?.organization_id) {
+      fetchOrganizationSettings();
       fetchContacts();
     } else {
       setLoading(false);
     }
   }, [profile]);
+
+  const fetchOrganizationSettings = async () => {
+    if (!profile?.organization_id) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('organizations')
+        .select('can_request_credits')
+        .eq('id', profile.organization_id)
+        .single();
+
+      if (error) {
+        console.error('Error fetching organization settings:', error);
+        return;
+      }
+
+      setCanRequestCredits(data?.can_request_credits ?? true);
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  };
 
   const fetchContacts = async () => {
     if (!profile?.organization_id) return;
@@ -119,6 +146,7 @@ const Kreditera = () => {
     }
   };
 
+  // Access denied for non-organization users
   if (profile?.role !== 'organization') {
     return (
       <div className="flex items-center justify-center h-64">
@@ -128,6 +156,26 @@ const Kreditera = () => {
             <h2 className="text-lg font-semibold text-foreground mb-2">Åtkomst nekad</h2>
             <p className="text-muted-foreground">
               Endast organisationer kan skicka kreditförfrågningar
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Organization doesn't have credit permission
+  if (canRequestCredits === false) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Card className="glass-card max-w-md w-full">
+          <CardContent className="pt-6 text-center">
+            <ShieldX className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+            <h2 className="text-lg font-semibold text-foreground mb-2">Kreditering ej tillgängligt</h2>
+            <p className="text-muted-foreground">
+              Er organisation har inte rättighet att kreditera leads enligt ert partneravtal.
+            </p>
+            <p className="text-sm text-muted-foreground mt-4">
+              Kontakta oss om du har frågor om ert avtal.
             </p>
           </CardContent>
         </Card>
@@ -161,7 +209,7 @@ const Kreditera = () => {
             <div>
               <CardTitle>Ny kreditförfrågan</CardTitle>
               <CardDescription>
-                Välj en deal och ange anledning för krediteringen
+                Välj en deal och ange anledning för krediteringen. Begäran måste göras inom 14 dagar.
               </CardDescription>
             </div>
           </div>

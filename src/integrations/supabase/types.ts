@@ -427,6 +427,47 @@ export type Database = {
           },
         ]
       }
+      organization_lead_quotas: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          organization_id: string
+          period_start: string
+          period_type: string
+          quota_amount: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          organization_id: string
+          period_start: string
+          period_type?: string
+          quota_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          organization_id?: string
+          period_start?: string
+          period_type?: string
+          quota_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_lead_quotas_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization_price_history: {
         Row: {
           created_at: string
@@ -642,6 +683,7 @@ export type Database = {
           allow_manual_calculation: boolean
           base_cost_for_billing: number | null
           billing_model: string | null
+          can_request_credits: boolean
           collaboration_start_date: string | null
           company_markup_share: number | null
           contact_person_name: string | null
@@ -664,6 +706,7 @@ export type Database = {
           allow_manual_calculation?: boolean
           base_cost_for_billing?: number | null
           billing_model?: string | null
+          can_request_credits?: boolean
           collaboration_start_date?: string | null
           company_markup_share?: number | null
           contact_person_name?: string | null
@@ -686,6 +729,7 @@ export type Database = {
           allow_manual_calculation?: boolean
           base_cost_for_billing?: number | null
           billing_model?: string | null
+          can_request_credits?: boolean
           collaboration_start_date?: string | null
           company_markup_share?: number | null
           contact_person_name?: string | null
