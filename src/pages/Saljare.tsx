@@ -24,6 +24,11 @@ interface OpenerStats {
   sunBatteryDeals: number;
   closedDeals: number;
   openerCommission: number;
+  // Adversus API fields (placeholder - to be populated from API)
+  callsMade: number | null;
+  conversations: number | null;
+  bookings: number | null;
+  hitRate: number | null;
 }
 
 interface CloserStats {
@@ -33,8 +38,12 @@ interface CloserStats {
   regions: { name: string; organization: string }[];
   totalSales: number;
   closedWonSales: number;
+  closedLostSales: number;
+  processedSales: number;
   totalCommission: number;
   totalInvoiceable: number;
+  generatedRevenue: number;
+  profitMargin: number;
 }
 
 interface Region {
@@ -115,6 +124,11 @@ const Saljare = () => {
           sunBatteryDeals: openerContacts.filter(c => c.interest === 'sun_battery').length,
           closedDeals: openerClosedSales.length,
           openerCommission: totalOpenerCommission,
+          // Adversus API fields - placeholder (will be populated from API)
+          callsMade: null,
+          conversations: null,
+          bookings: null,
+          hitRate: null,
         };
       });
 
@@ -154,6 +168,10 @@ const Saljare = () => {
       const closerStats: CloserStats[] = closerProfiles.map((closer) => {
         const closerSales = sales?.filter(s => s.closer_id === closer.id) || [];
         const closedWonSales = closerSales.filter(s => s.pipeline_status === 'closed_won');
+        const closedLostSales = closerSales.filter(s => s.pipeline_status === 'closed_lost');
+        const processedSales = closerSales.filter(s => 
+          s.pipeline_status === 'closed_won' || s.pipeline_status === 'closed_lost'
+        );
         
         const regionsForCloser = closerRegions
           ?.filter(cr => cr.closer_id === closer.id)
@@ -162,6 +180,9 @@ const Saljare = () => {
             organization: (cr.organization as any)?.name || 'Okänt'
           })) || [];
 
+        const totalCommission = closedWonSales.reduce((sum, s) => sum + (Number(s.closer_commission) || 0), 0);
+        const totalInvoiceable = closedWonSales.reduce((sum, s) => sum + (Number(s.invoiceable_amount) || 0), 0);
+
         return {
           id: closer.id,
           email: closer.email,
@@ -169,8 +190,12 @@ const Saljare = () => {
           regions: regionsForCloser,
           totalSales: closerSales.length,
           closedWonSales: closedWonSales.length,
-          totalCommission: closedWonSales.reduce((sum, s) => sum + (Number(s.closer_commission) || 0), 0),
-          totalInvoiceable: closedWonSales.reduce((sum, s) => sum + (Number(s.invoiceable_amount) || 0), 0),
+          closedLostSales: closedLostSales.length,
+          processedSales: processedSales.length,
+          totalCommission,
+          totalInvoiceable,
+          generatedRevenue: totalInvoiceable,
+          profitMargin: totalInvoiceable - totalCommission,
         };
       });
 
@@ -302,6 +327,10 @@ const Saljare = () => {
                               <Battery className="w-4 h-4 text-emerald-500" />
                             </div>
                           </TableHead>
+                          <TableHead className="text-center font-semibold text-muted-foreground">Ringda samtal</TableHead>
+                          <TableHead className="text-center font-semibold text-muted-foreground">Konversationer</TableHead>
+                          <TableHead className="text-center font-semibold text-muted-foreground">Bokningar</TableHead>
+                          <TableHead className="text-center font-semibold text-muted-foreground">Hit-rate</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -331,6 +360,18 @@ const Saljare = () => {
                             <TableCell className="text-center">{opener.solarDeals}</TableCell>
                             <TableCell className="text-center">{opener.batteryDeals}</TableCell>
                             <TableCell className="text-center">{opener.sunBatteryDeals}</TableCell>
+                            <TableCell className="text-center text-muted-foreground">
+                              {opener.callsMade ?? '–'}
+                            </TableCell>
+                            <TableCell className="text-center text-muted-foreground">
+                              {opener.conversations ?? '–'}
+                            </TableCell>
+                            <TableCell className="text-center text-muted-foreground">
+                              {opener.bookings ?? '–'}
+                            </TableCell>
+                            <TableCell className="text-center text-muted-foreground">
+                              {opener.hitRate != null ? `${(opener.hitRate * 100).toFixed(1)}%` : '–'}
+                            </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -467,8 +508,12 @@ const Saljare = () => {
                         <TableRow className="bg-muted/50 hover:bg-muted/50">
                           <TableHead className="font-semibold">Closer</TableHead>
                           <TableHead className="font-semibold">Regioner</TableHead>
-                          <TableHead className="text-center font-semibold">Aktiva leads</TableHead>
-                          <TableHead className="text-center font-semibold">Stängda affärer</TableHead>
+                          <TableHead className="text-center font-semibold">Tilldelade</TableHead>
+                          <TableHead className="text-center font-semibold">Bearbetade</TableHead>
+                          <TableHead className="text-center font-semibold text-emerald-600">Vunna</TableHead>
+                          <TableHead className="text-center font-semibold text-red-500">Förlorade</TableHead>
+                          <TableHead className="text-right font-semibold">Gen. intäkt</TableHead>
+                          <TableHead className="text-right font-semibold">Marginal</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -502,15 +547,29 @@ const Saljare = () => {
                                     </Badge>
                                   ))
                                 ) : (
-                                  <span className="text-muted-foreground text-sm">Inga regioner tilldelade</span>
+                                  <span className="text-muted-foreground text-sm">Inga regioner</span>
                                 )}
                               </div>
                             </TableCell>
                             <TableCell className="text-center">
-                              <span className="font-semibold">{closer.totalSales - closer.closedWonSales}</span>
+                              <span className="font-semibold">{closer.totalSales}</span>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <span className="font-semibold">{closer.processedSales}</span>
                             </TableCell>
                             <TableCell className="text-center">
                               <span className="font-semibold text-emerald-600">{closer.closedWonSales}</span>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <span className="font-semibold text-red-500">{closer.closedLostSales}</span>
+                            </TableCell>
+                            <TableCell className="text-right font-semibold text-primary">
+                              {formatCurrency(closer.generatedRevenue)}
+                            </TableCell>
+                            <TableCell className="text-right font-semibold">
+                              <span className={closer.profitMargin >= 0 ? 'text-emerald-600' : 'text-red-500'}>
+                                {formatCurrency(closer.profitMargin)}
+                              </span>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -531,7 +590,7 @@ const Saljare = () => {
                   <CardTitle>Closer-provisioner</CardTitle>
                 </div>
                 <CardDescription>
-                  Basprovision 8 000 kr för 15,36 kWh Emaldo-batteri (min 22 000 kr fakturering)
+                  Provisioner beräknas individuellt per affär baserat på registrerade kostnader
                 </CardDescription>
               </CardHeader>
               <CardContent>
