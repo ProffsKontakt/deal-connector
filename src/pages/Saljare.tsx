@@ -3,7 +3,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Navigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table';
+import { ResizableTableHead } from '@/components/ui/resizable-table';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -306,31 +307,31 @@ const Saljare = () => {
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-muted/50 hover:bg-muted/50">
-                          <TableHead className="font-semibold">Opener</TableHead>
-                          <TableHead className="text-center font-semibold">Totalt</TableHead>
-                          <TableHead className="text-center font-semibold">
+                          <ResizableTableHead className="font-semibold">Opener</ResizableTableHead>
+                          <ResizableTableHead className="text-center font-semibold">Totalt</ResizableTableHead>
+                          <ResizableTableHead className="text-center font-semibold">
                             <div className="flex items-center justify-center gap-1">
                               <Sun className="w-4 h-4 text-amber-500" />
                               Sol
                             </div>
-                          </TableHead>
-                          <TableHead className="text-center font-semibold">
+                          </ResizableTableHead>
+                          <ResizableTableHead className="text-center font-semibold">
                             <div className="flex items-center justify-center gap-1">
                               <Battery className="w-4 h-4 text-emerald-500" />
                               Batteri
                             </div>
-                          </TableHead>
-                          <TableHead className="text-center font-semibold">
+                          </ResizableTableHead>
+                          <ResizableTableHead className="text-center font-semibold">
                             <div className="flex items-center justify-center gap-1">
                               <Sun className="w-4 h-4 text-amber-500" />
                               +
                               <Battery className="w-4 h-4 text-emerald-500" />
                             </div>
-                          </TableHead>
-                          <TableHead className="text-center font-semibold text-muted-foreground">Ringda samtal</TableHead>
-                          <TableHead className="text-center font-semibold text-muted-foreground">Konversationer</TableHead>
-                          <TableHead className="text-center font-semibold text-muted-foreground">Bokningar</TableHead>
-                          <TableHead className="text-center font-semibold text-muted-foreground">Hit-rate</TableHead>
+                          </ResizableTableHead>
+                          <ResizableTableHead className="text-center font-semibold text-muted-foreground">Ringda samtal</ResizableTableHead>
+                          <ResizableTableHead className="text-center font-semibold text-muted-foreground">Konversationer</ResizableTableHead>
+                          <ResizableTableHead className="text-center font-semibold text-muted-foreground">Bokningar</ResizableTableHead>
+                          <ResizableTableHead className="text-center font-semibold text-muted-foreground">Hit-rate</ResizableTableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -406,11 +407,11 @@ const Saljare = () => {
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-muted/50 hover:bg-muted/50">
-                          <TableHead className="font-semibold">Namn</TableHead>
-                          <TableHead className="text-center font-semibold">Bokade leads</TableHead>
-                          <TableHead className="text-center font-semibold">Stängda affärer</TableHead>
-                          <TableHead className="text-center font-semibold">Provision/affär</TableHead>
-                          <TableHead className="text-center font-semibold">Total provision</TableHead>
+                          <ResizableTableHead className="font-semibold">Namn</ResizableTableHead>
+                          <ResizableTableHead className="text-center font-semibold">Bokade leads</ResizableTableHead>
+                          <ResizableTableHead className="text-center font-semibold">Stängda affärer</ResizableTableHead>
+                          <ResizableTableHead className="text-center font-semibold">Provision/affär</ResizableTableHead>
+                          <ResizableTableHead className="text-center font-semibold">Total provision</ResizableTableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -506,14 +507,14 @@ const Saljare = () => {
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-muted/50 hover:bg-muted/50">
-                          <TableHead className="font-semibold">Closer</TableHead>
-                          <TableHead className="font-semibold">Regioner</TableHead>
-                          <TableHead className="text-center font-semibold">Tilldelade</TableHead>
-                          <TableHead className="text-center font-semibold">Bearbetade</TableHead>
-                          <TableHead className="text-center font-semibold text-emerald-600">Vunna</TableHead>
-                          <TableHead className="text-center font-semibold text-red-500">Förlorade</TableHead>
-                          <TableHead className="text-right font-semibold">Gen. intäkt</TableHead>
-                          <TableHead className="text-right font-semibold">Marginal</TableHead>
+                          <ResizableTableHead className="font-semibold">Closer</ResizableTableHead>
+                          <ResizableTableHead className="font-semibold">Regioner</ResizableTableHead>
+                          <ResizableTableHead className="text-center font-semibold">Tilldelade</ResizableTableHead>
+                          <ResizableTableHead className="text-center font-semibold">Bearbetade</ResizableTableHead>
+                          <ResizableTableHead className="text-center font-semibold text-emerald-600">Vunna</ResizableTableHead>
+                          <ResizableTableHead className="text-center font-semibold text-red-500">Förlorade</ResizableTableHead>
+                          <ResizableTableHead className="text-right font-semibold">Gen. intäkt</ResizableTableHead>
+                          <ResizableTableHead className="text-right font-semibold">Marginal</ResizableTableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -605,10 +606,10 @@ const Saljare = () => {
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-muted/50 hover:bg-muted/50">
-                          <TableHead className="font-semibold">Namn</TableHead>
-                          <TableHead className="text-center font-semibold">Stängda affärer</TableHead>
-                          <TableHead className="text-center font-semibold">Fakturerbart</TableHead>
-                          <TableHead className="text-center font-semibold">Total provision</TableHead>
+                          <ResizableTableHead className="font-semibold">Namn</ResizableTableHead>
+                          <ResizableTableHead className="text-center font-semibold">Stängda affärer</ResizableTableHead>
+                          <ResizableTableHead className="text-center font-semibold">Fakturerbart</ResizableTableHead>
+                          <ResizableTableHead className="text-center font-semibold">Total provision</ResizableTableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>

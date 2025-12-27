@@ -3,7 +3,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Navigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table';
+import { ResizableTableHead } from '@/components/ui/resizable-table';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -315,31 +316,31 @@ const Partners = () => {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50 hover:bg-muted/50">
-                    <TableHead className="font-semibold">Partner</TableHead>
-                    <TableHead className="text-center font-semibold">Totalt</TableHead>
-                    <TableHead className="text-center font-semibold">
+                    <ResizableTableHead className="font-semibold">Partner</ResizableTableHead>
+                    <ResizableTableHead className="text-center font-semibold">Totalt</ResizableTableHead>
+                    <ResizableTableHead className="text-center font-semibold">
                       <div className="flex items-center justify-center gap-1">
                         <Sun className="w-4 h-4 text-amber-500" />
                         Sol
                       </div>
-                    </TableHead>
-                    <TableHead className="text-center font-semibold">
+                    </ResizableTableHead>
+                    <ResizableTableHead className="text-center font-semibold">
                       <div className="flex items-center justify-center gap-1">
                         <Battery className="w-4 h-4 text-emerald-500" />
                         Batteri
                       </div>
-                    </TableHead>
-                    <TableHead className="text-center font-semibold">
+                    </ResizableTableHead>
+                    <ResizableTableHead className="text-center font-semibold">
                       <div className="flex items-center justify-center gap-1">
                         <Sun className="w-4 h-4 text-amber-500" />
                         +
                         <Battery className="w-4 h-4 text-emerald-500" />
                       </div>
-                    </TableHead>
-                    <TableHead className="text-right font-semibold">Att fakturera</TableHead>
-                    <TableHead className="text-center font-semibold">Önskade krediter</TableHead>
-                    <TableHead className="text-center font-semibold">Godkända krediter</TableHead>
-                    <TableHead className="w-28 font-semibold">Åtgärder</TableHead>
+                    </ResizableTableHead>
+                    <ResizableTableHead className="text-right font-semibold">Att fakturera</ResizableTableHead>
+                    <ResizableTableHead className="text-center font-semibold">Önskade krediter</ResizableTableHead>
+                    <ResizableTableHead className="text-center font-semibold">Godkända krediter</ResizableTableHead>
+                    <ResizableTableHead className="w-28 font-semibold">Åtgärder</ResizableTableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
