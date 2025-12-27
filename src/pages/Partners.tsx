@@ -97,15 +97,44 @@ const Partners = () => {
       const leadsStart = startOfMonth(subMonths(billingDate, 1));
       const leadsEnd = endOfMonth(subMonths(billingDate, 1));
 
-      const { data: organizations } = await supabase
+      // Get all organizations first
+      const { data: allOrganizations } = await supabase
         .from('organizations')
-        .select('id, name, price_per_solar_deal, price_per_battery_deal, price_per_site_visit, status, contact_person_name, contact_phone, is_sales_consultant, billing_model')
-        .eq('status', statusFilter);
+        .select('id, name, price_per_solar_deal, price_per_battery_deal, price_per_site_visit, status, contact_person_name, contact_phone, is_sales_consultant, billing_model');
 
-      if (!organizations) {
+      if (!allOrganizations) {
         setPartners([]);
         return;
       }
+
+      // Get status history to filter by status during selected period
+      const periodStart = leadsStart.toISOString();
+      const periodEnd = leadsEnd.toISOString();
+      
+      const { data: statusHistory } = await supabase
+        .from('organization_status_history')
+        .select('organization_id, status, effective_from, effective_until');
+
+      // Filter organizations that had the selected status during the period
+      const organizations = allOrganizations.filter(org => {
+        const orgHistory = statusHistory?.filter(h => h.organization_id === org.id) || [];
+        
+        if (orgHistory.length === 0) {
+          // No history, fallback to current status
+          return org.status === statusFilter;
+        }
+
+        // Check if any status period overlaps with the selected period and matches the filter
+        return orgHistory.some(h => {
+          if (h.status !== statusFilter) return false;
+          
+          const historyStart = new Date(h.effective_from);
+          const historyEnd = h.effective_until ? new Date(h.effective_until) : new Date();
+          
+          // Check for overlap: period overlaps if it starts before history ends AND ends after history starts
+          return historyStart <= leadsEnd && historyEnd >= leadsStart;
+        });
+      });
 
       const { data: contacts } = await supabase
         .from('contacts')

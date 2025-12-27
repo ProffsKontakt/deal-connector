@@ -516,6 +516,44 @@ export type Database = {
           },
         ]
       }
+      organization_status_history: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          effective_from: string
+          effective_until: string | null
+          id: string
+          organization_id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          effective_from?: string
+          effective_until?: string | null
+          id?: string
+          organization_id: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          effective_from?: string
+          effective_until?: string | null
+          id?: string
+          organization_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_status_history_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizations: {
         Row: {
           allow_manual_calculation: boolean
