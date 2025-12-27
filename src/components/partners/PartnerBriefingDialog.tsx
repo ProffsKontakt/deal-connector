@@ -29,8 +29,10 @@ import {
   Download,
   BarChart3,
   Target,
-  CheckCircle2
+  CheckCircle2,
+  Clock
 } from 'lucide-react';
+import { PartnerTimelineTab } from './PartnerTimelineTab';
 
 interface PartnerData {
   id: string;
