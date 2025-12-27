@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { EmptyState } from '@/components/ui/empty-state';
 import { CreateOrganizationDialog } from '@/components/admin/CreateOrganizationDialog';
 import { BulkImportPartnersDialog } from '@/components/admin/BulkImportPartnersDialog';
-import { Building2, TrendingUp, Sun, Battery, Calendar, Archive, Trash2 } from 'lucide-react';
+import { Building2, TrendingUp, Sun, Battery, Calendar, Archive, Trash2, ExternalLink } from 'lucide-react';
+import { PartnerLeadsDialog } from '@/components/partners/PartnerLeadsDialog';
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import { sv } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -37,6 +38,8 @@ interface PartnerStats {
   totalValue: number;
   requestedCredits: number;
   approvedCredits: number;
+  pricePerSolar: number;
+  pricePerBattery: number;
 }
 
 const Partners = () => {
@@ -50,6 +53,7 @@ const Partners = () => {
     return format(subMonths(now, 1), 'yyyy-MM');
   });
   const [deletePartner, setDeletePartner] = useState<{ id: string; name: string } | null>(null);
+  const [leadsDialogPartner, setLeadsDialogPartner] = useState<PartnerStats | null>(null);
 
   // Generate month options (last 12 months)
   const monthOptions = Array.from({ length: 12 }, (_, i) => {
@@ -146,6 +150,8 @@ const Partners = () => {
           totalValue,
           requestedCredits,
           approvedCredits,
+          pricePerSolar: solarPrice,
+          pricePerBattery: batteryPrice,
         };
       });
 
@@ -340,12 +346,18 @@ const Partners = () => {
                   {partners.map((partner) => (
                     <TableRow key={partner.id} className="hover:bg-muted/30 group">
                       <TableCell>
-                        <div>
-                          <p className="font-medium">{partner.name}</p>
+                        <button
+                          className="text-left group/name hover:underline"
+                          onClick={() => setLeadsDialogPartner(partner)}
+                        >
+                          <div className="flex items-center gap-1">
+                            <p className="font-medium">{partner.name}</p>
+                            <ExternalLink className="w-3 h-3 text-muted-foreground opacity-0 group-hover/name:opacity-100 transition-opacity" />
+                          </div>
                           {partner.contact_person_name && (
                             <p className="text-xs text-muted-foreground">{partner.contact_person_name}</p>
                           )}
-                        </div>
+                        </button>
                       </TableCell>
                       <TableCell className="text-center">
                         <span className="font-semibold text-primary">{partner.totalLeads}</span>
@@ -423,6 +435,17 @@ const Partners = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Partner leads dialog */}
+      <PartnerLeadsDialog
+        open={!!leadsDialogPartner}
+        onOpenChange={(open) => !open && setLeadsDialogPartner(null)}
+        partnerId={leadsDialogPartner?.id || null}
+        partnerName={leadsDialogPartner?.name || ''}
+        selectedMonth={selectedMonth}
+        pricePerSolar={leadsDialogPartner?.pricePerSolar || 0}
+        pricePerBattery={leadsDialogPartner?.pricePerBattery || 0}
+      />
     </div>
   );
 };
