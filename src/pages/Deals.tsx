@@ -570,7 +570,7 @@ const Deals = () => {
                               <Settings className="w-4 h-4" />
                             </Button>
                           </PopoverTrigger>
-                          <PopoverContent align="end" className="w-56" onInteractOutside={(e) => e.preventDefault()}>
+                          <PopoverContent align="end" className="w-56">
                             <div className="space-y-1">
                               <p className="text-sm font-medium mb-3">Visa & ordna kolumner</p>
                               <p className="text-xs text-muted-foreground mb-3">Dra för att ändra ordning</p>
