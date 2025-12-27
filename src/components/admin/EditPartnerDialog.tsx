@@ -563,14 +563,14 @@ export const EditPartnerDialog = ({ partner, open, onOpenChange, onUpdated }: Ed
                 <div className="space-y-2">
                   <Label>Vilken leadtyp ska vi själva sälja på?</Label>
                   <Select
-                    value={formData.sales_consultant_lead_type}
-                    onValueChange={(value) => setFormData(prev => ({ ...prev, sales_consultant_lead_type: value }))}
+                    value={formData.sales_consultant_lead_type || 'none'}
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, sales_consultant_lead_type: value === 'none' ? '' : value }))}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Välj leadtyp (valfritt)" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Ingen (fakturera alla leads)</SelectItem>
+                      <SelectItem value="none">Ingen (fakturera alla leads)</SelectItem>
                       <SelectItem value="sun">Sol</SelectItem>
                       <SelectItem value="battery">Batteri</SelectItem>
                       <SelectItem value="sun_battery">Sol + Batteri</SelectItem>
