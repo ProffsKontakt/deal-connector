@@ -18,6 +18,8 @@ import { InvoicingOverview } from '@/components/partners/InvoicingOverview';
 import { CreditsManagement } from '@/components/partners/CreditsManagement';
 import { PartnerOverviewStats } from '@/components/partners/PartnerOverviewStats';
 import { PartnerTimelineSection } from '@/components/partners/PartnerTimelineSection';
+import { PartnerQuotasSection } from '@/components/partners/PartnerQuotasSection';
+import { Separator } from '@/components/ui/separator';
 import { Building2, TrendingUp, Sun, Battery, Calendar, Archive, Trash2, ExternalLink, Target, FileText, CreditCard, Settings2, Clock } from 'lucide-react';
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import { sv } from 'date-fns/locale';
@@ -397,15 +399,24 @@ const Partners = () => {
           if (p) setBriefingPartner(p);
         }} />
       </CollapsibleSection>
-
       {/* Credits Management */}
       <CollapsibleSection title="Krediter" icon={<CreditCard className="w-5 h-5 text-primary" />} defaultOpen={false}>
-        <CreditsManagement onUpdate={fetchPartnerStats} />
+        <CreditsManagement selectedMonth={selectedMonth} onUpdate={fetchPartnerStats} />
       </CollapsibleSection>
 
       {/* Historik och planering */}
       <CollapsibleSection title="Historik och planering" icon={<Clock className="w-5 h-5 text-primary" />} defaultOpen={false}>
-        <PartnerTimelineSection />
+        <div className="space-y-8">
+          <div>
+            <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
+              <Target className="w-5 h-5 text-primary" />
+              Kvoter
+            </h3>
+            <PartnerQuotasSection selectedMonth={selectedMonth} />
+          </div>
+          <Separator />
+          <PartnerTimelineSection selectedMonth={selectedMonth} />
+        </div>
       </CollapsibleSection>
 
       {/* Partner Briefing Dialog */}
