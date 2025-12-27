@@ -17,7 +17,8 @@ import { PartnerBriefingDialog } from '@/components/partners/PartnerBriefingDial
 import { InvoicingOverview } from '@/components/partners/InvoicingOverview';
 import { CreditsManagement } from '@/components/partners/CreditsManagement';
 import { PartnerOverviewStats } from '@/components/partners/PartnerOverviewStats';
-import { Building2, TrendingUp, Sun, Battery, Calendar, Archive, Trash2, ExternalLink, Target, FileText, CreditCard, Settings2 } from 'lucide-react';
+import { PartnerTimelineSection } from '@/components/partners/PartnerTimelineSection';
+import { Building2, TrendingUp, Sun, Battery, Calendar, Archive, Trash2, ExternalLink, Target, FileText, CreditCard, Settings2, Clock } from 'lucide-react';
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import { sv } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -400,6 +401,11 @@ const Partners = () => {
       {/* Credits Management */}
       <CollapsibleSection title="Krediter" icon={<CreditCard className="w-5 h-5 text-primary" />} defaultOpen={false}>
         <CreditsManagement onUpdate={fetchPartnerStats} />
+      </CollapsibleSection>
+
+      {/* Historik och planering */}
+      <CollapsibleSection title="Historik och planering" icon={<Clock className="w-5 h-5 text-primary" />} defaultOpen={false}>
+        <PartnerTimelineSection />
       </CollapsibleSection>
 
       {/* Partner Briefing Dialog */}

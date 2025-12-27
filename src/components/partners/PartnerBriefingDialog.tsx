@@ -39,6 +39,7 @@ interface PartnerData {
   contact_phone: string | null;
   pricePerSolar: number;
   pricePerBattery: number;
+  collaboration_start_date?: string | null;
 }
 
 interface Lead {
@@ -248,18 +249,22 @@ export function PartnerBriefingDialog({
         </DialogHeader>
 
         <Tabs defaultValue="overview" className="flex-1 overflow-hidden flex flex-col">
-          <TabsList className="grid w-full grid-cols-3 mb-4">
+          <TabsList className="grid w-full grid-cols-4 mb-4">
             <TabsTrigger value="overview" className="gap-2">
               <BarChart3 className="w-4 h-4" />
               Översikt
             </TabsTrigger>
             <TabsTrigger value="invoicing" className="gap-2">
               <FileText className="w-4 h-4" />
-              Faktureringsunderlag
+              Fakturering
+            </TabsTrigger>
+            <TabsTrigger value="timeline" className="gap-2">
+              <Clock className="w-4 h-4" />
+              Tidslinje
             </TabsTrigger>
             <TabsTrigger value="coverage" className="gap-2">
               <MapPin className="w-4 h-4" />
-              Täckningsområde
+              Täckning
             </TabsTrigger>
           </TabsList>
 
@@ -439,6 +444,13 @@ export function PartnerBriefingDialog({
                   </div>
                 </div>
               )}
+            </TabsContent>
+
+            <TabsContent value="timeline" className="mt-0 h-full">
+              <PartnerTimelineTab 
+                partnerId={partner.id} 
+                collaborationStartDate={partner.collaboration_start_date || null}
+              />
             </TabsContent>
 
             <TabsContent value="coverage" className="mt-0 h-full">
