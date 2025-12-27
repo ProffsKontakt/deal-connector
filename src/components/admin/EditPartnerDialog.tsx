@@ -49,6 +49,7 @@ interface Partner {
   lf_finans_percent?: number;
   default_customer_price?: number;
   allow_manual_calculation?: boolean;
+  sales_consultant_lead_type?: string | null;
 }
 
 interface EditPartnerDialogProps {
@@ -77,6 +78,7 @@ export const EditPartnerDialog = ({ partner, open, onOpenChange, onUpdated }: Ed
     lf_finans_percent: '3',
     default_customer_price: '78000',
     allow_manual_calculation: false,
+    sales_consultant_lead_type: '' as string,
     // For "Allt över" calculation preview
     preview_total_price: '78000',
     preview_property_owners: '1',
@@ -113,6 +115,7 @@ export const EditPartnerDialog = ({ partner, open, onOpenChange, onUpdated }: Ed
         lf_finans_percent: (partner.lf_finans_percent ?? 3).toString(),
         default_customer_price: (partner.default_customer_price ?? 78000).toString(),
         allow_manual_calculation: partner.allow_manual_calculation || false,
+        sales_consultant_lead_type: partner.sales_consultant_lead_type || '',
         preview_total_price: (partner.default_customer_price ?? 78000).toString(),
         preview_property_owners: '1',
         preview_product_id: '',
@@ -373,7 +376,8 @@ export const EditPartnerDialog = ({ partner, open, onOpenChange, onUpdated }: Ed
           lf_finans_percent: parseFloat(formData.lf_finans_percent) || 3,
           default_customer_price: parseFloat(formData.default_customer_price) || 78000,
           allow_manual_calculation: formData.allow_manual_calculation,
-        })
+          sales_consultant_lead_type: formData.sales_consultant_lead_type || null,
+        } as any)
         .eq('id', partner.id);
 
       if (error) throw error;
@@ -555,6 +559,28 @@ export const EditPartnerDialog = ({ partner, open, onOpenChange, onUpdated }: Ed
 
             {formData.is_sales_consultant && (
               <div className="pl-4 border-l-2 border-primary/30 space-y-4 animate-fade-in">
+                {/* Sales Consultant Lead Type */}
+                <div className="space-y-2">
+                  <Label>Vilken leadtyp ska vi själva sälja på?</Label>
+                  <Select
+                    value={formData.sales_consultant_lead_type}
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, sales_consultant_lead_type: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Välj leadtyp (valfritt)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Ingen (fakturera alla leads)</SelectItem>
+                      <SelectItem value="sun">Sol</SelectItem>
+                      <SelectItem value="battery">Batteri</SelectItem>
+                      <SelectItem value="sun_battery">Sol + Batteri</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Om valt, exkluderas leads med denna typ från faktureringsunderlaget för denna partner
+                  </p>
+                </div>
+
                 {/* Billing Model */}
                 <div className="space-y-2">
                   <Label>Faktureringsmodell</Label>
