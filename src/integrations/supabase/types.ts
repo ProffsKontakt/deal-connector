@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_log: {
+        Row: {
+          action: string
+          changed_at: string
+          changed_by: string | null
+          id: string
+          new_values: Json | null
+          old_values: Json | null
+          record_id: string
+          table_name: string
+        }
+        Insert: {
+          action: string
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          new_values?: Json | null
+          old_values?: Json | null
+          record_id: string
+          table_name: string
+        }
+        Update: {
+          action?: string
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          new_values?: Json | null
+          old_values?: Json | null
+          record_id?: string
+          table_name?: string
+        }
+        Relationships: []
+      }
       closer_commission_types: {
         Row: {
           closer_id: string
@@ -554,11 +587,62 @@ export type Database = {
           },
         ]
       }
+      organization_timeline_events: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          event_date: string
+          event_type: string
+          id: string
+          is_scheduled: boolean
+          organization_id: string
+          status: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          event_date: string
+          event_type: string
+          id?: string
+          is_scheduled?: boolean
+          organization_id: string
+          status?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          event_date?: string
+          event_type?: string
+          id?: string
+          is_scheduled?: boolean
+          organization_id?: string
+          status?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_timeline_events_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizations: {
         Row: {
           allow_manual_calculation: boolean
           base_cost_for_billing: number | null
           billing_model: string | null
+          collaboration_start_date: string | null
           company_markup_share: number | null
           contact_person_name: string | null
           contact_phone: string | null
@@ -580,6 +664,7 @@ export type Database = {
           allow_manual_calculation?: boolean
           base_cost_for_billing?: number | null
           billing_model?: string | null
+          collaboration_start_date?: string | null
           company_markup_share?: number | null
           contact_person_name?: string | null
           contact_phone?: string | null
@@ -601,6 +686,7 @@ export type Database = {
           allow_manual_calculation?: boolean
           base_cost_for_billing?: number | null
           billing_model?: string | null
+          collaboration_start_date?: string | null
           company_markup_share?: number | null
           contact_person_name?: string | null
           contact_phone?: string | null
@@ -1241,6 +1327,7 @@ export type Database = {
       }
       postgis_version: { Args: never; Returns: string }
       postgis_wagyu_version: { Args: never; Returns: string }
+      process_scheduled_timeline_events: { Args: never; Returns: undefined }
       st_3dclosestpoint: {
         Args: { geom1: unknown; geom2: unknown }
         Returns: unknown

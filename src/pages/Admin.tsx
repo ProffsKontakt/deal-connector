@@ -15,8 +15,9 @@ import { BulkImportPartnersDialog } from '@/components/admin/BulkImportPartnersD
 import { EditPartnerDialog } from '@/components/admin/EditPartnerDialog';
 import { AddUserDialog } from '@/components/admin/AddUserDialog';
 import { ProductManagement } from '@/components/admin/ProductManagement';
+import { AuditLogSection } from '@/components/admin/AuditLogSection';
 import { toast } from 'sonner';
-import { Building2, Users, CreditCard, Check, X, Settings, Inbox, Archive, Trash2, Settings2, Package } from 'lucide-react';
+import { Building2, Users, CreditCard, Check, X, Settings, Inbox, Archive, Trash2, Settings2, Package, History } from 'lucide-react';
 import { format } from 'date-fns';
 import { sv } from 'date-fns/locale';
 import { Navigate } from 'react-router-dom';
@@ -252,10 +253,10 @@ const Admin = () => {
       </div>
 
       <Tabs defaultValue="organizations" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4 max-w-2xl bg-muted/50 p-1">
+        <TabsList className="grid w-full grid-cols-5 max-w-3xl bg-muted/50 p-1">
           <TabsTrigger value="organizations" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
             <Building2 className="w-4 h-4" />
-            <span className="hidden sm:inline">Organisationer</span>
+            <span className="hidden sm:inline">Partners</span>
           </TabsTrigger>
           <TabsTrigger value="products" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
             <Package className="w-4 h-4" />
@@ -268,6 +269,10 @@ const Admin = () => {
           <TabsTrigger value="credits" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
             <CreditCard className="w-4 h-4" />
             <span className="hidden sm:inline">Krediter</span>
+          </TabsTrigger>
+          <TabsTrigger value="auditlog" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <History className="w-4 h-4" />
+            <span className="hidden sm:inline">Ändringslogg</span>
           </TabsTrigger>
         </TabsList>
 
