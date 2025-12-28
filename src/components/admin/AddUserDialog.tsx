@@ -13,17 +13,25 @@ type UserRole = Database['public']['Enums']['user_role'];
 
 interface AddUserDialogProps {
   onCreated: () => void;
+  defaultUserType?: 'internal' | 'external';
 }
 
-export const AddUserDialog = ({ onCreated }: AddUserDialogProps) => {
+export const AddUserDialog = ({ onCreated, defaultUserType = 'internal' }: AddUserDialogProps) => {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     full_name: '',
-    role: 'opener' as UserRole,
+    role: (defaultUserType === 'internal' ? 'opener' : 'organization') as UserRole,
+    personal_number: '',
+    bank_name: '',
+    account_number: '',
+    employer_fee_percent: 31.42,
+    vacation_pay_percent: 12,
   });
+
+  const isInternalRole = (role: UserRole) => ['admin', 'teamleader', 'opener', 'closer'].includes(role);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,7 +48,11 @@ export const AddUserDialog = ({ onCreated }: AddUserDialogProps) => {
 
     setLoading(true);
     try {
-      // Create user via Supabase Auth (password is automatically hashed)
+      // Use admin API to create user without logging in
+      // We call an edge function or use signUp with a workaround
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      
+      // Create user via Supabase Auth
       const { data, error } = await supabase.auth.signUp({
         email: formData.email.trim(),
         password: formData.password,
@@ -54,13 +66,26 @@ export const AddUserDialog = ({ onCreated }: AddUserDialogProps) => {
       if (error) throw error;
 
       if (data.user) {
-        // Update the profile with the correct role and name
+        // Prepare profile update data
+        const profileUpdate: any = { 
+          role: formData.role,
+          full_name: formData.full_name.trim() || null,
+          user_type: isInternalRole(formData.role) ? 'internal' : 'external',
+        };
+
+        // Add internal fields only for internal users
+        if (isInternalRole(formData.role)) {
+          profileUpdate.personal_number = formData.personal_number.trim() || null;
+          profileUpdate.bank_name = formData.bank_name.trim() || null;
+          profileUpdate.account_number = formData.account_number.trim() || null;
+          profileUpdate.employer_fee_percent = formData.employer_fee_percent;
+          profileUpdate.vacation_pay_percent = formData.vacation_pay_percent;
+        }
+
+        // Update the profile with the correct role and additional fields
         await supabase
           .from('profiles')
-          .update({ 
-            role: formData.role,
-            full_name: formData.full_name.trim() || null,
-          })
+          .update(profileUpdate)
           .eq('id', data.user.id);
 
         // Update user_roles table
@@ -70,8 +95,26 @@ export const AddUserDialog = ({ onCreated }: AddUserDialogProps) => {
           .eq('user_id', data.user.id);
       }
 
+      // Restore the admin's session if it was replaced
+      if (currentSession) {
+        await supabase.auth.setSession({
+          access_token: currentSession.access_token,
+          refresh_token: currentSession.refresh_token,
+        });
+      }
+
       toast.success('Användare skapad');
-      setFormData({ email: '', password: '', full_name: '', role: 'opener' });
+      setFormData({ 
+        email: '', 
+        password: '', 
+        full_name: '', 
+        role: defaultUserType === 'internal' ? 'opener' : 'organization',
+        personal_number: '',
+        bank_name: '',
+        account_number: '',
+        employer_fee_percent: 31.42,
+        vacation_pay_percent: 12,
+      });
       setOpen(false);
       onCreated();
     } catch (error: any) {
@@ -89,11 +132,20 @@ export const AddUserDialog = ({ onCreated }: AddUserDialogProps) => {
           Lägg till användare
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Lägg till ny användare</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="user-name">Namn</Label>
+            <Input
+              id="user-name"
+              value={formData.full_name}
+              onChange={(e) => setFormData(prev => ({ ...prev, full_name: e.target.value }))}
+              placeholder="Förnamn Efternamn"
+            />
+          </div>
           <div className="space-y-2">
             <Label htmlFor="user-email">E-post *</Label>
             <Input
@@ -117,15 +169,6 @@ export const AddUserDialog = ({ onCreated }: AddUserDialogProps) => {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="user-name">Namn</Label>
-            <Input
-              id="user-name"
-              value={formData.full_name}
-              onChange={(e) => setFormData(prev => ({ ...prev, full_name: e.target.value }))}
-              placeholder="Förnamn Efternamn"
-            />
-          </div>
-          <div className="space-y-2">
             <Label htmlFor="user-role">Roll</Label>
             <Select
               value={formData.role}
@@ -135,14 +178,77 @@ export const AddUserDialog = ({ onCreated }: AddUserDialogProps) => {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="admin">Admin</SelectItem>
-                <SelectItem value="teamleader">Teamleader</SelectItem>
-                <SelectItem value="opener">Opener</SelectItem>
-                <SelectItem value="closer">Closer</SelectItem>
-                <SelectItem value="organization">Partner</SelectItem>
+                {defaultUserType === 'internal' ? (
+                  <>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="teamleader">Teamleader</SelectItem>
+                    <SelectItem value="opener">Opener</SelectItem>
+                    <SelectItem value="closer">Closer</SelectItem>
+                  </>
+                ) : (
+                  <SelectItem value="organization">Partner</SelectItem>
+                )}
               </SelectContent>
             </Select>
           </div>
+
+          {isInternalRole(formData.role) && (
+            <>
+              <div className="border-t pt-4 mt-4">
+                <p className="text-sm font-medium text-muted-foreground mb-3">Anställningsinformation</p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="user-personal-number">Personnummer</Label>
+                <Input
+                  id="user-personal-number"
+                  value={formData.personal_number}
+                  onChange={(e) => setFormData(prev => ({ ...prev, personal_number: e.target.value }))}
+                  placeholder="YYYYMMDD-XXXX"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="user-bank-name">Banknamn</Label>
+                <Input
+                  id="user-bank-name"
+                  value={formData.bank_name}
+                  onChange={(e) => setFormData(prev => ({ ...prev, bank_name: e.target.value }))}
+                  placeholder="t.ex. Nordea"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="user-account-number">Kontonummer</Label>
+                <Input
+                  id="user-account-number"
+                  value={formData.account_number}
+                  onChange={(e) => setFormData(prev => ({ ...prev, account_number: e.target.value }))}
+                  placeholder="XXXX-XXXXXXX"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="user-employer-fee">Arbetsgivaravgift (%)</Label>
+                  <Input
+                    id="user-employer-fee"
+                    type="number"
+                    step="0.01"
+                    value={formData.employer_fee_percent}
+                    onChange={(e) => setFormData(prev => ({ ...prev, employer_fee_percent: parseFloat(e.target.value) || 0 }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="user-vacation-pay">Semesterersättning (%)</Label>
+                  <Input
+                    id="user-vacation-pay"
+                    type="number"
+                    step="0.01"
+                    value={formData.vacation_pay_percent}
+                    onChange={(e) => setFormData(prev => ({ ...prev, vacation_pay_percent: parseFloat(e.target.value) || 0 }))}
+                  />
+                </div>
+              </div>
+            </>
+          )}
+
           <div className="flex justify-end gap-2 pt-4">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Avbryt

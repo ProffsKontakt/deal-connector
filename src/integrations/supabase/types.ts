@@ -797,46 +797,64 @@ export type Database = {
       }
       profiles: {
         Row: {
+          account_number: string | null
+          bank_name: string | null
           closer_base_commission: number | null
           closer_company_markup_share: number | null
           closer_markup_percentage: number | null
           created_at: string
           email: string
+          employer_fee_percent: number | null
           full_name: string | null
           id: string
           opener_commission_per_deal: number | null
           opener_commission_per_lead: number | null
           organization_id: string | null
+          personal_number: string | null
           role: Database["public"]["Enums"]["user_role"]
           updated_at: string
+          user_type: string | null
+          vacation_pay_percent: number | null
         }
         Insert: {
+          account_number?: string | null
+          bank_name?: string | null
           closer_base_commission?: number | null
           closer_company_markup_share?: number | null
           closer_markup_percentage?: number | null
           created_at?: string
           email: string
+          employer_fee_percent?: number | null
           full_name?: string | null
           id: string
           opener_commission_per_deal?: number | null
           opener_commission_per_lead?: number | null
           organization_id?: string | null
+          personal_number?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
+          user_type?: string | null
+          vacation_pay_percent?: number | null
         }
         Update: {
+          account_number?: string | null
+          bank_name?: string | null
           closer_base_commission?: number | null
           closer_company_markup_share?: number | null
           closer_markup_percentage?: number | null
           created_at?: string
           email?: string
+          employer_fee_percent?: number | null
           full_name?: string | null
           id?: string
           opener_commission_per_deal?: number | null
           opener_commission_per_lead?: number | null
           organization_id?: string | null
+          personal_number?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
+          user_type?: string | null
+          vacation_pay_percent?: number | null
         }
         Relationships: [
           {

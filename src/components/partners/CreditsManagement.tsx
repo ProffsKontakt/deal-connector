@@ -40,16 +40,16 @@ export function CreditsManagement({ selectedMonth, onUpdate }: CreditsManagement
 
   const fetchCreditRequests = async () => {
     try {
-      // Parse the billing month
-      const billingDate = new Date(selectedMonth + '-01');
+      // Parse the selected month - this IS the leads month (not billing month)
+      const selectedDate = new Date(selectedMonth + '-01');
       
-      // Leads generated in the month BEFORE the billing month
-      const leadsMonthStart = startOfMonth(subMonths(billingDate, 1));
-      const leadsMonthEnd = endOfMonth(subMonths(billingDate, 1));
+      // Leads generated in the selected month
+      const leadsMonthStart = startOfMonth(selectedDate);
+      const leadsMonthEnd = endOfMonth(selectedDate);
       
-      // Credits must be requested BEFORE the 1st of the billing month to avoid being billed
+      // Credits must be requested BEFORE the 1st of the next month to avoid being billed
       // If requested AFTER, they'll be deducted next month (we still show them but mark differently)
-      const billingCutoff = startOfMonth(billingDate);
+      const billingCutoff = startOfMonth(addMonths(selectedDate, 1));
 
       const { data, error } = await supabase
         .from('credit_requests')
@@ -82,7 +82,7 @@ export function CreditsManagement({ selectedMonth, onUpdate }: CreditsManagement
         // These would be deducted from THIS month's invoice
         const previousLeadsStart = startOfMonth(subMonths(leadsMonthStart, 1));
         const previousLeadsEnd = endOfMonth(subMonths(leadsMonthStart, 1));
-        const previousBillingCutoff = startOfMonth(subMonths(billingDate, 1));
+        const previousBillingCutoff = startOfMonth(selectedDate);
         
         const leadInPreviousPeriod = !isBefore(leadDate, previousLeadsStart) && !isAfter(leadDate, previousLeadsEnd);
         const creditRequestedAfterPreviousCutoff = isAfter(creditRequestDate, previousBillingCutoff);
@@ -120,8 +120,8 @@ export function CreditsManagement({ selectedMonth, onUpdate }: CreditsManagement
   const isDeferredCredit = (request: CreditRequest): boolean => {
     if (!request.contact?.date_sent) return false;
     
-    const billingDate = new Date(selectedMonth + '-01');
-    const leadsMonthStart = startOfMonth(subMonths(billingDate, 1));
+    const selectedDate = new Date(selectedMonth + '-01');
+    const leadsMonthStart = startOfMonth(selectedDate);
     const leadDate = parseISO(request.contact.date_sent);
     
     return isBefore(leadDate, leadsMonthStart);
@@ -135,8 +135,8 @@ export function CreditsManagement({ selectedMonth, onUpdate }: CreditsManagement
     );
   }
 
-  const billingDate = new Date(selectedMonth + '-01');
-  const leadsMonthLabel = format(subMonths(billingDate, 1), 'MMMM yyyy', { locale: sv });
+  const selectedDate = new Date(selectedMonth + '-01');
+  const leadsMonthLabel = format(selectedDate, 'MMMM yyyy', { locale: sv });
 
   if (creditRequests.length === 0) {
     return (

@@ -14,6 +14,7 @@ import { CreateOrganizationDialog } from '@/components/admin/CreateOrganizationD
 import { BulkImportPartnersDialog } from '@/components/admin/BulkImportPartnersDialog';
 import { EditPartnerDialog } from '@/components/admin/EditPartnerDialog';
 import { AddUserDialog } from '@/components/admin/AddUserDialog';
+import { EditUserDialog } from '@/components/admin/EditUserDialog';
 import { ProductManagement } from '@/components/admin/ProductManagement';
 import { AuditLogSection } from '@/components/admin/AuditLogSection';
 import { toast } from 'sonner';
@@ -82,6 +83,8 @@ const Admin = () => {
   const [orgStatusFilter, setOrgStatusFilter] = useState<'active' | 'archived'>('active');
   const [deleteOrg, setDeleteOrg] = useState<{ id: string; name: string } | null>(null);
   const [deleteUser, setDeleteUser] = useState<{ id: string; email: string } | null>(null);
+  const [editingUser, setEditingUser] = useState<Profile | null>(null);
+  const [userTypeFilter, setUserTypeFilter] = useState<'internal' | 'external'>('internal');
 
   useEffect(() => {
     if (profile?.role === 'admin') {
@@ -428,76 +431,122 @@ const Admin = () => {
 
         <TabsContent value="users" className="animate-fade-in">
           <Card className="glass-card">
-            <CardHeader className="flex flex-row items-center justify-between pb-4">
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4">
               <div>
                 <CardTitle className="text-xl">Användare & Roller</CardTitle>
                 <CardDescription>Hantera användarkonton och behörigheter</CardDescription>
               </div>
-              <AddUserDialog onCreated={fetchData} />
+              <div className="flex items-center gap-2">
+                <div className="flex rounded-lg border border-border overflow-hidden">
+                  <Button
+                    variant={userTypeFilter === 'internal' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setUserTypeFilter('internal')}
+                    className="rounded-none"
+                  >
+                    Internt
+                  </Button>
+                  <Button
+                    variant={userTypeFilter === 'external' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setUserTypeFilter('external')}
+                    className="rounded-none"
+                  >
+                    Externt
+                  </Button>
+                </div>
+                <AddUserDialog onCreated={fetchData} defaultUserType={userTypeFilter} />
+              </div>
             </CardHeader>
             <CardContent>
-              {profiles.length === 0 ? (
-                <EmptyState
-                  icon={Users}
-                  title="Inga användare"
-                  description="Inga användare har registrerats ännu"
-                />
-              ) : (
-                <div className="rounded-xl border border-border overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-muted/30 hover:bg-muted/30">
-                        <ResizableTableHead className="font-semibold">E-post</ResizableTableHead>
-                        <ResizableTableHead className="font-semibold">Namn</ResizableTableHead>
-                        <ResizableTableHead className="font-semibold">Roll</ResizableTableHead>
-                        <ResizableTableHead className="w-16 font-semibold">Åtgärd</ResizableTableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {profiles.map((user) => (
-                        <TableRow key={user.id} className="group">
-                          <TableCell className="font-medium">{user.email}</TableCell>
-                          <TableCell className="text-muted-foreground">
-                            {user.full_name || '–'}
-                          </TableCell>
-                          <TableCell>
-                            <Select
-                              value={user.role}
-                              onValueChange={(value: UserRole) => handleRoleChange(user.id, value)}
-                            >
-                              <SelectTrigger className="w-44 h-9">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="admin">Admin</SelectItem>
-                                <SelectItem value="teamleader">Teamleader</SelectItem>
-                                <SelectItem value="opener">Opener</SelectItem>
-                                <SelectItem value="closer">Closer</SelectItem>
-                                <SelectItem value="organization">Partner</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </TableCell>
-                          <TableCell>
-                            {user.role !== 'admin' && (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
-                                onClick={() => setDeleteUser({ id: user.id, email: user.email })}
-                                title="Ta bort användare"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            )}
-                          </TableCell>
+              {(() => {
+                const internalRoles = ['admin', 'teamleader', 'opener', 'closer'];
+                const filteredProfiles = profiles.filter(p => 
+                  userTypeFilter === 'internal' 
+                    ? internalRoles.includes(p.role)
+                    : p.role === 'organization'
+                );
+                
+                return filteredProfiles.length === 0 ? (
+                  <EmptyState
+                    icon={Users}
+                    title={userTypeFilter === 'internal' ? 'Inga interna användare' : 'Inga externa användare'}
+                    description="Lägg till användare för att komma igång"
+                  />
+                ) : (
+                  <div className="rounded-xl border border-border overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted/30 hover:bg-muted/30">
+                          <ResizableTableHead className="font-semibold">E-post</ResizableTableHead>
+                          <ResizableTableHead className="font-semibold">Namn</ResizableTableHead>
+                          <ResizableTableHead className="font-semibold">Roll</ResizableTableHead>
+                          <ResizableTableHead className="w-24 font-semibold">Åtgärder</ResizableTableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
+                      </TableHeader>
+                      <TableBody>
+                        {filteredProfiles.map((user) => (
+                          <TableRow key={user.id} className="group">
+                            <TableCell className="font-medium">{user.email}</TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {user.full_name || '–'}
+                            </TableCell>
+                            <TableCell>
+                              <Select
+                                value={user.role}
+                                onValueChange={(value: UserRole) => handleRoleChange(user.id, value)}
+                              >
+                                <SelectTrigger className="w-44 h-9">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="admin">Admin</SelectItem>
+                                  <SelectItem value="teamleader">Teamleader</SelectItem>
+                                  <SelectItem value="opener">Opener</SelectItem>
+                                  <SelectItem value="closer">Closer</SelectItem>
+                                  <SelectItem value="organization">Partner</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex gap-1">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="opacity-0 group-hover:opacity-100 transition-opacity"
+                                  onClick={() => setEditingUser(user)}
+                                  title="Redigera"
+                                >
+                                  <Settings2 className="w-4 h-4" />
+                                </Button>
+                                {user.role !== 'admin' && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
+                                    onClick={() => setDeleteUser({ id: user.id, email: user.email })}
+                                    title="Ta bort"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                );
+              })()}
             </CardContent>
           </Card>
+          <EditUserDialog
+            user={editingUser}
+            open={!!editingUser}
+            onOpenChange={(open) => !open && setEditingUser(null)}
+            onUpdated={fetchData}
+          />
         </TabsContent>
 
         <TabsContent value="credits" className="animate-fade-in">

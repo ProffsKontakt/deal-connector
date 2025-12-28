@@ -9,9 +9,9 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { format, parseISO, startOfMonth, subMonths } from 'date-fns';
+import { format, parseISO, startOfMonth } from 'date-fns';
 import { sv } from 'date-fns/locale';
-import { Target, Save, History, Building2 } from 'lucide-react';
+import { Target, Save, History, Building2, ChevronDown } from 'lucide-react';
 
 interface Organization {
   id: string;
@@ -295,48 +295,72 @@ export function PartnerQuotasSection({ selectedMonth }: PartnerQuotasSectionProp
         </div>
       )}
 
-      {/* Recent Changes */}
+      {/* Recent Changes - Collapsible */}
       {recentChanges.length > 0 && (
-        <div>
-          <h4 className="font-medium mb-3 flex items-center gap-2 text-muted-foreground">
-            <History className="w-4 h-4" />
-            Senaste ändringar
-          </h4>
-          <div className="space-y-2">
-            {recentChanges.slice(0, 5).map((change) => {
-              const oldQuota = change.old_values?.quota_amount;
-              const newQuota = change.new_values?.quota_amount;
-              const orgId = change.new_values?.organization_id;
-              const org = organizations.find(o => o.id === orgId);
-              const userName = change.changed_by ? userNames[change.changed_by] : null;
-              
-              return (
-                <div key={change.id} className="text-sm flex items-center gap-2 text-muted-foreground">
-                  <span className="text-xs">
-                    {format(parseISO(change.changed_at), 'dd MMM HH:mm', { locale: sv })}
-                  </span>
-                  <span>•</span>
-                  <span>
-                    {org?.name || 'Okänd partner'}:{' '}
-                    {change.action === 'INSERT' ? (
-                      <span className="text-success">satte kvot till {newQuota}</span>
-                    ) : (
-                      <span>
-                        ändrade från {oldQuota ?? 0} till{' '}
-                        <span className="text-foreground font-medium">{newQuota}</span>
-                      </span>
-                    )}
-                  </span>
-                  {userName && (
-                    <>
-                      <span>•</span>
-                      <span className="text-xs italic">av {userName}</span>
-                    </>
+        <CollapsibleChanges 
+          changes={recentChanges} 
+          organizations={organizations}
+          userNames={userNames}
+        />
+      )}
+    </div>
+  );
+}
+
+interface CollapsibleChangesProps {
+  changes: QuotaChange[];
+  organizations: Organization[];
+  userNames: Record<string, string>;
+}
+
+function CollapsibleChanges({ changes, organizations, userNames }: CollapsibleChangesProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  
+  return (
+    <div>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="font-medium mb-3 flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        <History className="w-4 h-4" />
+        Senaste ändringar ({changes.length})
+      </button>
+      {isOpen && (
+        <div className="space-y-2 max-h-64 overflow-y-auto pl-6">
+          {changes.map((change) => {
+            const oldQuota = change.old_values?.quota_amount;
+            const newQuota = change.new_values?.quota_amount;
+            const orgId = change.new_values?.organization_id;
+            const org = organizations.find(o => o.id === orgId);
+            const userName = change.changed_by ? userNames[change.changed_by] : null;
+            
+            return (
+              <div key={change.id} className="text-sm flex items-center gap-2 text-muted-foreground">
+                <span className="text-xs">
+                  {format(parseISO(change.changed_at), 'dd MMM HH:mm', { locale: sv })}
+                </span>
+                <span>•</span>
+                <span>
+                  {org?.name || 'Okänd partner'}:{' '}
+                  {change.action === 'INSERT' ? (
+                    <span className="text-success">satte kvot till {newQuota}</span>
+                  ) : (
+                    <span>
+                      ändrade från {oldQuota ?? 0} till{' '}
+                      <span className="text-foreground font-medium">{newQuota}</span>
+                    </span>
                   )}
-                </div>
-              );
-            })}
-          </div>
+                </span>
+                {userName && (
+                  <>
+                    <span>•</span>
+                    <span className="text-xs italic">av {userName}</span>
+                  </>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
