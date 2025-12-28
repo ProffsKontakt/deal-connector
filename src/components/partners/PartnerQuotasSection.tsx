@@ -31,6 +31,7 @@ interface QuotaChange {
   id: string;
   changed_at: string;
   action: string;
+  changed_by: string | null;
   old_values: { quota_amount?: number } | null;
   new_values: { quota_amount?: number; organization_id?: string } | null;
 }
@@ -45,13 +46,14 @@ export function PartnerQuotasSection({ selectedMonth }: PartnerQuotasSectionProp
   const [quotas, setQuotas] = useState<Record<string, number>>({});
   const [originalQuotas, setOriginalQuotas] = useState<Record<string, number>>({});
   const [recentChanges, setRecentChanges] = useState<QuotaChange[]>([]);
+  const [userNames, setUserNames] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
 
-  // The quota period is the leads month (month before billing)
-  const billingDate = new Date(selectedMonth + '-01');
-  const quotaPeriodStart = format(startOfMonth(subMonths(billingDate, 1)), 'yyyy-MM-dd');
-  const quotaPeriodLabel = format(subMonths(billingDate, 1), 'MMMM yyyy', { locale: sv });
+  // The quota period is the selected month
+  const selectedDate = new Date(selectedMonth + '-01');
+  const quotaPeriodStart = format(startOfMonth(selectedDate), 'yyyy-MM-dd');
+  const quotaPeriodLabel = format(selectedDate, 'MMMM yyyy', { locale: sv });
 
   useEffect(() => {
     fetchData();
@@ -88,13 +90,30 @@ export function PartnerQuotasSection({ selectedMonth }: PartnerQuotasSectionProp
       // Fetch recent quota changes from audit log
       const { data: changes } = await supabase
         .from('audit_log')
-        .select('id, changed_at, action, old_values, new_values')
+        .select('id, changed_at, action, changed_by, old_values, new_values')
         .eq('table_name', 'organization_lead_quotas')
         .order('changed_at', { ascending: false })
         .limit(10);
 
       if (changes) {
         setRecentChanges(changes as QuotaChange[]);
+        
+        // Fetch user names for changed_by ids
+        const userIds = changes.filter(c => c.changed_by).map(c => c.changed_by!);
+        if (userIds.length > 0) {
+          const { data: profiles } = await supabase
+            .from('profiles')
+            .select('id, full_name, email')
+            .in('id', userIds);
+          
+          if (profiles) {
+            const nameMap: Record<string, string> = {};
+            profiles.forEach(p => {
+              nameMap[p.id] = p.full_name || p.email;
+            });
+            setUserNames(nameMap);
+          }
+        }
       }
     } finally {
       setLoading(false);
@@ -133,13 +152,30 @@ export function PartnerQuotasSection({ selectedMonth }: PartnerQuotasSectionProp
       // Refresh changes
       const { data: changes } = await supabase
         .from('audit_log')
-        .select('id, changed_at, action, old_values, new_values')
+        .select('id, changed_at, action, changed_by, old_values, new_values')
         .eq('table_name', 'organization_lead_quotas')
         .order('changed_at', { ascending: false })
         .limit(10);
       
       if (changes) {
         setRecentChanges(changes as QuotaChange[]);
+        
+        // Update user names
+        const userIds = changes.filter(c => c.changed_by).map(c => c.changed_by!);
+        if (userIds.length > 0) {
+          const { data: profiles } = await supabase
+            .from('profiles')
+            .select('id, full_name, email')
+            .in('id', userIds);
+          
+          if (profiles) {
+            const nameMap: Record<string, string> = { ...userNames };
+            profiles.forEach(p => {
+              nameMap[p.id] = p.full_name || p.email;
+            });
+            setUserNames(nameMap);
+          }
+        }
       }
     } catch (error: any) {
       toast.error('Kunde inte spara kvot: ' + error.message);
@@ -272,6 +308,7 @@ export function PartnerQuotasSection({ selectedMonth }: PartnerQuotasSectionProp
               const newQuota = change.new_values?.quota_amount;
               const orgId = change.new_values?.organization_id;
               const org = organizations.find(o => o.id === orgId);
+              const userName = change.changed_by ? userNames[change.changed_by] : null;
               
               return (
                 <div key={change.id} className="text-sm flex items-center gap-2 text-muted-foreground">
@@ -290,6 +327,12 @@ export function PartnerQuotasSection({ selectedMonth }: PartnerQuotasSectionProp
                       </span>
                     )}
                   </span>
+                  {userName && (
+                    <>
+                      <span>•</span>
+                      <span className="text-xs italic">av {userName}</span>
+                    </>
+                  )}
                 </div>
               );
             })}

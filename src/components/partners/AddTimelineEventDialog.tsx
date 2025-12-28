@@ -39,6 +39,22 @@ const EVENT_TYPES = [
   { value: 'coverage_change', label: 'Täckningsändring' },
 ];
 
+const STATUS_OPTIONS = [
+  { value: 'active', label: 'Aktiv' },
+  { value: 'archived', label: 'Avstängd' },
+  { value: 'test_batch_complete', label: 'Test-batch uppnådd' },
+];
+
+const FOLLOWUP_OPTIONS = [
+  { value: '3', label: '3 dagar' },
+  { value: '5', label: '5 dagar' },
+  { value: '7', label: '7 dagar' },
+  { value: '10', label: '10 dagar' },
+  { value: '14', label: '14 dagar' },
+  { value: '20', label: '20 dagar' },
+  { value: '30', label: '30 dagar' },
+];
+
 export function AddTimelineEventDialog({
   open,
   onOpenChange,
@@ -56,6 +72,7 @@ export function AddTimelineEventDialog({
   const [description, setDescription] = useState('');
   const [isScheduled, setIsScheduled] = useState(false);
   const [status, setStatus] = useState<string>('');
+  const [followupDays, setFollowupDays] = useState<string>('');
 
   useEffect(() => {
     if (open && !organizationId) {
@@ -70,6 +87,11 @@ export function AddTimelineEventDialog({
     // Auto-set isScheduled for scheduled event types
     if (eventType === 'pause_scheduled' || eventType === 'activation_scheduled') {
       setIsScheduled(true);
+    }
+    // Reset status and followup when event type changes
+    if (eventType !== 'status_change') {
+      setStatus('');
+      setFollowupDays('');
     }
   }, [eventType]);
 
@@ -87,8 +109,28 @@ export function AddTimelineEventDialog({
       return;
     }
 
+    // Validate status selection for status_change event type
+    if (eventType === 'status_change' && !status) {
+      toast.error('Välj en status');
+      return;
+    }
+
+    // Validate followup selection for test_batch_complete status
+    if (eventType === 'status_change' && status === 'test_batch_complete' && !followupDays) {
+      toast.error('Välj när du vill återkoppla');
+      return;
+    }
+
     setLoading(true);
     try {
+      // Build description with followup info if applicable
+      let finalDescription = description || '';
+      if (status === 'test_batch_complete' && followupDays) {
+        const followupDate = new Date(eventDate);
+        followupDate.setDate(followupDate.getDate() + parseInt(followupDays));
+        finalDescription = `${finalDescription}${finalDescription ? '\n' : ''}Återkoppla: ${followupDays} dagar (${followupDate.toISOString().split('T')[0]})`;
+      }
+
       const { error } = await supabase
         .from('organization_timeline_events')
         .insert({
@@ -96,7 +138,7 @@ export function AddTimelineEventDialog({
           event_type: eventType,
           event_date: new Date(eventDate).toISOString(),
           title,
-          description: description || null,
+          description: finalDescription || null,
           is_scheduled: isScheduled,
           status: eventType === 'status_change' ? status : null,
           created_by: user?.id,
@@ -114,6 +156,7 @@ export function AddTimelineEventDialog({
       setDescription('');
       setIsScheduled(false);
       setStatus('');
+      setFollowupDays('');
       setEventDate(new Date().toISOString().split('T')[0]);
     } catch (error: any) {
       toast.error('Kunde inte skapa händelse: ' + error.message);
@@ -124,15 +167,15 @@ export function AddTimelineEventDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Calendar className="w-5 h-5 text-primary" />
             Lägg till händelse
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <div className="space-y-4 py-4 overflow-y-auto flex-1 pr-1">
           {!organizationId && (
             <div className="space-y-2">
               <Label>Partner *</Label>
@@ -193,16 +236,34 @@ export function AddTimelineEventDialog({
 
           {eventType === 'status_change' && (
             <div className="space-y-2">
-              <Label>Ny status</Label>
+              <Label>Ny status *</Label>
               <Select value={status} onValueChange={setStatus}>
                 <SelectTrigger>
                   <SelectValue placeholder="Välj status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="active">Aktiv</SelectItem>
-                  <SelectItem value="archived">Pausad</SelectItem>
+                  {STATUS_OPTIONS.map(opt => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
+            </div>
+          )}
+
+          {eventType === 'status_change' && status === 'test_batch_complete' && (
+            <div className="space-y-2">
+              <Label>När återkoppla *</Label>
+              <Select value={followupDays} onValueChange={setFollowupDays}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Välj tid för uppföljning" />
+                </SelectTrigger>
+                <SelectContent>
+                  {FOLLOWUP_OPTIONS.map(opt => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">Påminnelse för uppföljning efter test-batch</p>
             </div>
           )}
 
@@ -222,7 +283,7 @@ export function AddTimelineEventDialog({
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="shrink-0">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Avbryt
           </Button>

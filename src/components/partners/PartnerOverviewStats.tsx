@@ -34,9 +34,9 @@ export function PartnerOverviewStats({ selectedMonth }: PartnerOverviewStatsProp
 
   const fetchStats = async () => {
     try {
-      const billingDate = new Date(selectedMonth + '-01');
-      const leadsStart = startOfMonth(subMonths(billingDate, 1));
-      const leadsEnd = endOfMonth(subMonths(billingDate, 1));
+      const selectedDate = new Date(selectedMonth + '-01');
+      const leadsStart = startOfMonth(selectedDate);
+      const leadsEnd = endOfMonth(selectedDate);
 
       // Fetch active organizations
       const { data: organizations } = await supabase
@@ -121,8 +121,8 @@ export function PartnerOverviewStats({ selectedMonth }: PartnerOverviewStatsProp
     }
   };
 
-  const billingDate = new Date(selectedMonth + '-01');
-  const leadsMonthLabel = format(subMonths(billingDate, 1), 'MMMM yyyy', { locale: sv });
+  const selectedDate = new Date(selectedMonth + '-01');
+  const leadsMonthLabel = format(selectedDate, 'MMMM yyyy', { locale: sv });
 
   if (loading) {
     return (
