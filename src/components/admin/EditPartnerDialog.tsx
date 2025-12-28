@@ -50,6 +50,7 @@ interface Partner {
   default_customer_price?: number;
   allow_manual_calculation?: boolean;
   sales_consultant_lead_type?: string | null;
+  can_request_credits?: boolean;
 }
 
 interface EditPartnerDialogProps {
@@ -117,6 +118,7 @@ export const EditPartnerDialog = ({ partner, open, onOpenChange, onUpdated }: Ed
         default_customer_price: (partner.default_customer_price ?? 78000).toString(),
         allow_manual_calculation: partner.allow_manual_calculation || false,
         sales_consultant_lead_type: partner.sales_consultant_lead_type || '',
+        can_request_credits: partner.can_request_credits ?? true,
         preview_total_price: (partner.default_customer_price ?? 78000).toString(),
         preview_property_owners: '1',
         preview_product_id: '',
