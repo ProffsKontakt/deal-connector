@@ -350,6 +350,13 @@ const Partners = () => {
                     <ResizableTableHead className="text-center font-semibold">Totalt</ResizableTableHead>
                     <ResizableTableHead className="text-center font-semibold"><Sun className="w-4 h-4 text-amber-500 mx-auto" /></ResizableTableHead>
                     <ResizableTableHead className="text-center font-semibold"><Battery className="w-4 h-4 text-emerald-500 mx-auto" /></ResizableTableHead>
+                    <ResizableTableHead className="text-center font-semibold">
+                      <div className="flex items-center justify-center gap-0.5">
+                        <Sun className="w-3 h-3 text-amber-500" />+<Battery className="w-3 h-3 text-emerald-500" />
+                      </div>
+                    </ResizableTableHead>
+                    <ResizableTableHead className="text-center font-semibold">Önskade</ResizableTableHead>
+                    <ResizableTableHead className="text-center font-semibold">Godkända</ResizableTableHead>
                     <ResizableTableHead className="text-center font-semibold">Close rate</ResizableTableHead>
                     <ResizableTableHead className="text-right font-semibold">Att fakturera</ResizableTableHead>
                     <ResizableTableHead className="w-32 font-semibold">Åtgärder</ResizableTableHead>
@@ -368,8 +375,11 @@ const Partners = () => {
                         </button>
                       </TableCell>
                       <TableCell className="text-center"><span className="font-semibold text-primary">{partner.totalLeads}</span></TableCell>
-                      <TableCell className="text-center">{partner.solarLeads + partner.sunBatteryLeads}</TableCell>
-                      <TableCell className="text-center">{partner.batteryLeads + partner.sunBatteryLeads}</TableCell>
+                      <TableCell className="text-center">{partner.solarLeads}</TableCell>
+                      <TableCell className="text-center">{partner.batteryLeads}</TableCell>
+                      <TableCell className="text-center">{partner.sunBatteryLeads}</TableCell>
+                      <TableCell className="text-center"><span className="text-amber-600">{partner.requestedCredits}</span></TableCell>
+                      <TableCell className="text-center"><span className="text-success">{partner.approvedCredits}</span></TableCell>
                       <TableCell className="text-center"><span className={`px-2 py-1 rounded text-sm font-medium ${partner.closeRate >= 20 ? 'text-emerald-600 bg-emerald-500/10' : partner.closeRate >= 10 ? 'text-amber-600 bg-amber-500/10' : 'text-red-600 bg-red-500/10'}`}>{partner.closeRate.toFixed(0)}%</span></TableCell>
                       <TableCell className="text-right"><span className="font-semibold text-success">{partner.totalValue.toLocaleString('sv-SE')} kr</span></TableCell>
                       <TableCell>

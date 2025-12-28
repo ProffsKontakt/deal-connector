@@ -328,10 +328,6 @@ const Saljare = () => {
                               <Battery className="w-4 h-4 text-emerald-500" />
                             </div>
                           </ResizableTableHead>
-                          <ResizableTableHead className="text-center font-semibold text-muted-foreground">Ringda samtal</ResizableTableHead>
-                          <ResizableTableHead className="text-center font-semibold text-muted-foreground">Konversationer</ResizableTableHead>
-                          <ResizableTableHead className="text-center font-semibold text-muted-foreground">Bokningar</ResizableTableHead>
-                          <ResizableTableHead className="text-center font-semibold text-muted-foreground">Hit-rate</ResizableTableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -361,18 +357,6 @@ const Saljare = () => {
                             <TableCell className="text-center">{opener.solarDeals}</TableCell>
                             <TableCell className="text-center">{opener.batteryDeals}</TableCell>
                             <TableCell className="text-center">{opener.sunBatteryDeals}</TableCell>
-                            <TableCell className="text-center text-muted-foreground">
-                              {opener.callsMade ?? '–'}
-                            </TableCell>
-                            <TableCell className="text-center text-muted-foreground">
-                              {opener.conversations ?? '–'}
-                            </TableCell>
-                            <TableCell className="text-center text-muted-foreground">
-                              {opener.bookings ?? '–'}
-                            </TableCell>
-                            <TableCell className="text-center text-muted-foreground">
-                              {opener.hitRate != null ? `${(opener.hitRate * 100).toFixed(1)}%` : '–'}
-                            </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
