@@ -20,9 +20,9 @@ interface NavItem {
 const navItems: NavItem[] = [
   { to: "/admin", label: "Admin", icon: User, roles: ["admin"] },
   { to: "/deals", label: "Deals", icon: FileText, roles: ["admin", "teamleader", "opener", "organization", "closer"] },
-  { to: "/kreditera", label: "Kreditera", icon: CreditCard, roles: ["organization"], requiresCreditPermission: true },
   { to: "/saljare", label: "Säljare", icon: Users, roles: ["admin"] },
   { to: "/partners", label: "Partners", icon: Handshake, roles: ["admin"] },
+  { to: "/kreditera", label: "Kreditera", icon: CreditCard, roles: ["organization"], requiresCreditPermission: true },
   { to: "/installningar", label: "Inställningar", icon: Settings, roles: ["admin"] },
 ];
 

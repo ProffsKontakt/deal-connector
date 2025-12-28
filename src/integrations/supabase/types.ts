@@ -133,16 +133,19 @@ export type Database = {
           contact_id: string
           id: string
           organization_id: string
+          sold_to_partner: boolean
         }
         Insert: {
           contact_id: string
           id?: string
           organization_id: string
+          sold_to_partner?: boolean
         }
         Update: {
           contact_id?: string
           id?: string
           organization_id?: string
+          sold_to_partner?: boolean
         }
         Relationships: [
           {
@@ -225,6 +228,7 @@ export type Database = {
         Row: {
           contact_id: string
           created_at: string
+          credit_date: string | null
           id: string
           organization_id: string
           reason: string | null
@@ -235,6 +239,7 @@ export type Database = {
         Insert: {
           contact_id: string
           created_at?: string
+          credit_date?: string | null
           id?: string
           organization_id: string
           reason?: string | null
@@ -245,6 +250,7 @@ export type Database = {
         Update: {
           contact_id?: string
           created_at?: string
+          credit_date?: string | null
           id?: string
           organization_id?: string
           reason?: string | null

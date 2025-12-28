@@ -68,7 +68,7 @@ const ResizableTableHead = React.forwardRef<HTMLTableCellElement, ResizableTable
       <th
         ref={setRefs}
         className={cn(
-          "h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0 relative select-none group/resize whitespace-nowrap",
+          "h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0 relative select-none group/resize whitespace-nowrap border-r border-border/30 last:border-r-0",
           isResizing && "bg-muted/30",
           className
         )}
