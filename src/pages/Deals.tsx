@@ -88,7 +88,7 @@ interface CreditRequest {
   status: CreditStatus;
   reason: string | null;
   created_at: string;
-  contact: { email: string } | null;
+  contact: { email: string; date_sent: string } | null;
   organization: { name: string } | null;
   requested_by_profile: { email: string } | null;
 }
@@ -216,7 +216,7 @@ const Deals = () => {
           .from('credit_requests')
           .select(`
             *,
-            contact:contacts(email),
+            contact:contacts(email, date_sent),
             organization:organizations(name),
             requested_by_profile:profiles!credit_requests_requested_by_fkey(email)
           `)
@@ -341,6 +341,19 @@ const Deals = () => {
       totalOrgLinks: filteredContacts.reduce((sum, c) => sum + (c.organizations?.length || 0), 0)
     };
   }, [filteredContacts, priceHistory, organizations]);
+
+  // Filter credit requests by selected month based on lead's date_sent
+  // Show credits where the lead was generated in the selected month
+  const filteredCreditRequests = useMemo(() => {
+    const monthStart = startOfMonth(selectedMonth);
+    const monthEnd = endOfMonth(selectedMonth);
+    
+    return creditRequests.filter(request => {
+      if (!request.contact?.date_sent) return false;
+      const leadDate = new Date(request.contact.date_sent);
+      return leadDate >= monthStart && leadDate <= monthEnd;
+    });
+  }, [creditRequests, selectedMonth]);
 
   const getLatestCreditStatus = (contact: Contact) => {
     if (!contact.credit_requests || contact.credit_requests.length === 0) return null;
@@ -766,14 +779,16 @@ const Deals = () => {
               <CreditCard className="h-5 w-5 text-primary" />
               <CardTitle className="text-xl">Kreditförfrågningar</CardTitle>
             </div>
-            <CardDescription>Granska och hantera inkomna kreditförfrågningar</CardDescription>
+            <CardDescription>
+              Granska och hantera kreditförfrågningar för leads genererade i {format(selectedMonth, 'MMMM yyyy', { locale: sv })}
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            {creditRequests.length === 0 ? (
+            {filteredCreditRequests.length === 0 ? (
               <EmptyState
                 icon={Inbox}
                 title="Inga kreditbegäranden"
-                description="Det finns inga kreditförfrågningar att hantera just nu"
+                description={`Det finns inga kreditförfrågningar för ${format(selectedMonth, 'MMMM yyyy', { locale: sv })}`}
               />
             ) : (
               <div className="rounded-xl border border-border overflow-hidden">
@@ -783,17 +798,21 @@ const Deals = () => {
                       <ResizableTableHead className="font-semibold">Kontakt</ResizableTableHead>
                       <ResizableTableHead className="font-semibold">Organisation</ResizableTableHead>
                       <ResizableTableHead className="font-semibold">Anledning</ResizableTableHead>
-                      <ResizableTableHead className="font-semibold">Datum</ResizableTableHead>
+                      <ResizableTableHead className="font-semibold">Lead datum</ResizableTableHead>
+                      <ResizableTableHead className="font-semibold">Begärt datum</ResizableTableHead>
                       <ResizableTableHead className="font-semibold">Status</ResizableTableHead>
                       <ResizableTableHead className="w-28 font-semibold">Åtgärder</ResizableTableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {creditRequests.map((request) => (
+                    {filteredCreditRequests.map((request) => (
                       <TableRow key={request.id}>
                         <TableCell className="font-medium">{request.contact?.email || '–'}</TableCell>
                         <TableCell className="text-muted-foreground">{request.organization?.name || '–'}</TableCell>
                         <TableCell className="text-muted-foreground max-w-xs truncate">{request.reason || '–'}</TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {request.contact?.date_sent ? format(new Date(request.contact.date_sent), 'dd MMM yyyy', { locale: sv }) : '–'}
+                        </TableCell>
                         <TableCell className="text-muted-foreground">{format(new Date(request.created_at), 'dd MMM yyyy', { locale: sv })}</TableCell>
                         <TableCell><StatusBadge status={request.status} /></TableCell>
                         <TableCell>
