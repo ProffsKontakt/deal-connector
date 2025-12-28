@@ -9,7 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
 import { InterestBadge } from '@/components/ui/interest-badge';
 import { StatusBadge } from '@/components/ui/status-badge';
-import { Building2, Mail, Phone, MapPin, User, CreditCard, Pencil, X, Check, Package } from 'lucide-react';
+import { Building2, Mail, Phone, MapPin, User, CreditCard, Pencil, X, Check, Package, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
 import { sv } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
@@ -36,9 +36,18 @@ interface Product {
 }
 
 interface CreditRequest {
+  id?: string;
   status: 'pending' | 'approved' | 'denied';
   organization_id: string;
   organization?: { name: string };
+  credit_date?: string;
+  reason?: string | null;
+}
+
+interface ContactOrg {
+  id: string;
+  organization_id: string;
+  sold_to_partner?: boolean;
 }
 
 interface Sale {
@@ -62,6 +71,7 @@ interface Contact {
   organizations?: Organization[];
   credit_requests?: CreditRequest[];
   sales?: Sale[];
+  contact_organizations?: ContactOrg[];
 }
 
 interface DealDetailsDialogProps {
@@ -79,6 +89,8 @@ export const DealDetailsDialog = ({ contact, organizations, open, onOpenChange, 
   const [loading, setLoading] = useState(false);
   const [openers, setOpeners] = useState<Opener[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [fullCreditRequests, setFullCreditRequests] = useState<CreditRequest[]>([]);
+  const [contactOrgs, setContactOrgs] = useState<ContactOrg[]>([]);
   const [editData, setEditData] = useState({
     name: '',
     email: '',
@@ -87,6 +99,7 @@ export const DealDetailsDialog = ({ contact, organizations, open, onOpenChange, 
     interest: '' as 'sun' | 'battery' | 'sun_battery',
     opener_id: '',
     selectedOrganizations: [] as string[],
+    soldToPartner: {} as Record<string, boolean>,
     // Product selection
     useCustomProduct: false,
     product_id: '',
@@ -94,6 +107,9 @@ export const DealDetailsDialog = ({ contact, organizations, open, onOpenChange, 
     custom_product_price: '',
     custom_product_material_cost_eur: '',
   });
+  
+  // Credit editing state
+  const [creditEdits, setCreditEdits] = useState<Record<string, { status: string; credit_date: string }>>({});
 
   useEffect(() => {
     const fetchData = async () => {
@@ -106,6 +122,43 @@ export const DealDetailsDialog = ({ contact, organizations, open, onOpenChange, 
     };
     fetchData();
   }, []);
+  
+  // Fetch full credit requests and contact_organizations when dialog opens
+  useEffect(() => {
+    if (!contact || !open) return;
+    
+    const fetchCreditDetails = async () => {
+      const [creditRes, contactOrgsRes] = await Promise.all([
+        supabase
+          .from('credit_requests')
+          .select('id, status, organization_id, credit_date, reason')
+          .eq('contact_id', contact.id),
+        supabase
+          .from('contact_organizations')
+          .select('id, organization_id, sold_to_partner')
+          .eq('contact_id', contact.id)
+      ]);
+      
+      if (creditRes.data) {
+        setFullCreditRequests(creditRes.data as CreditRequest[]);
+        // Initialize credit edits
+        const edits: Record<string, { status: string; credit_date: string }> = {};
+        creditRes.data.forEach(cr => {
+          edits[cr.id] = { 
+            status: cr.status, 
+            credit_date: cr.credit_date || format(new Date(), 'yyyy-MM-dd')
+          };
+        });
+        setCreditEdits(edits);
+      }
+      
+      if (contactOrgsRes.data) {
+        setContactOrgs(contactOrgsRes.data as ContactOrg[]);
+      }
+    };
+    
+    fetchCreditDetails();
+  }, [contact, open]);
 
   const isAdmin = profile?.role === 'admin';
   const isCloser = profile?.role === ('closer' as string);
@@ -118,6 +171,12 @@ export const DealDetailsDialog = ({ contact, organizations, open, onOpenChange, 
     const sale = contact.sales?.[0];
     const hasCustomProduct = !!sale?.custom_product_name;
     
+    // Build sold_to_partner map
+    const soldToPartnerMap: Record<string, boolean> = {};
+    contactOrgs.forEach(co => {
+      soldToPartnerMap[co.organization_id] = co.sold_to_partner || false;
+    });
+    
     setEditData({
       name: contact.name || '',
       email: contact.email,
@@ -126,6 +185,7 @@ export const DealDetailsDialog = ({ contact, organizations, open, onOpenChange, 
       interest: contact.interest,
       opener_id: contact.opener_id || '',
       selectedOrganizations: contact.organizations?.map(o => o.id) || [],
+      soldToPartner: soldToPartnerMap,
       useCustomProduct: hasCustomProduct,
       product_id: sale?.product_id || '',
       custom_product_name: sale?.custom_product_name || '',
@@ -152,6 +212,62 @@ export const DealDetailsDialog = ({ contact, organizations, open, onOpenChange, 
         selectedOrganizations: Array.from(currentSet),
       };
     });
+  };
+  
+  const handleSoldToPartnerChange = (orgId: string, checked: boolean) => {
+    setEditData(prev => ({
+      ...prev,
+      soldToPartner: {
+        ...prev.soldToPartner,
+        [orgId]: checked,
+      },
+    }));
+  };
+  
+  const handleCreditStatusChange = (creditId: string, status: string) => {
+    setCreditEdits(prev => ({
+      ...prev,
+      [creditId]: { ...prev[creditId], status },
+    }));
+  };
+  
+  const handleCreditDateChange = (creditId: string, date: string) => {
+    setCreditEdits(prev => ({
+      ...prev,
+      [creditId]: { ...prev[creditId], credit_date: date },
+    }));
+  };
+  
+  const saveCreditChanges = async (creditId: string) => {
+    const edit = creditEdits[creditId];
+    if (!edit) return;
+    
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from('credit_requests')
+        .update({ 
+          status: edit.status as 'pending' | 'approved' | 'denied',
+          credit_date: edit.credit_date,
+        })
+        .eq('id', creditId);
+      
+      if (error) throw error;
+      
+      toast({ title: 'Kreditstatus uppdaterad' });
+      onDealUpdated?.();
+      
+      // Refresh credit requests
+      const { data } = await supabase
+        .from('credit_requests')
+        .select('id, status, organization_id, credit_date, reason')
+        .eq('contact_id', contact!.id);
+      if (data) setFullCreditRequests(data as CreditRequest[]);
+    } catch (error: unknown) {
+      toast({ title: 'Fel', description: (error as Error).message, variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSave = async () => {
@@ -181,11 +297,12 @@ export const DealDetailsDialog = ({ contact, organizations, open, onOpenChange, 
         .delete()
         .eq('contact_id', contact.id);
 
-      // Then, insert new links
+      // Then, insert new links with sold_to_partner flags
       if (editData.selectedOrganizations.length > 0) {
         const orgLinks = editData.selectedOrganizations.map(orgId => ({
           contact_id: contact.id,
           organization_id: orgId,
+          sold_to_partner: editData.soldToPartner[orgId] || false,
         }));
 
         const { error: linkError } = await supabase
@@ -222,6 +339,13 @@ export const DealDetailsDialog = ({ contact, organizations, open, onOpenChange, 
           .update(saleUpdate)
           .eq('id', contact.sales[0].id);
       }
+      
+      // Refresh contact_organizations
+      const { data: coData } = await supabase
+        .from('contact_organizations')
+        .select('id, organization_id, sold_to_partner')
+        .eq('contact_id', contact.id);
+      if (coData) setContactOrgs(coData as ContactOrg[]);
 
       toast({ title: 'Deal uppdaterad' });
       setIsEditing(false);
@@ -237,13 +361,14 @@ export const DealDetailsDialog = ({ contact, organizations, open, onOpenChange, 
 
   // Get organization names for credit requests
   const getCreditingOrganizations = () => {
-    if (!contact.credit_requests || contact.credit_requests.length === 0) return [];
-    
-    return contact.credit_requests.map(cr => {
+    return fullCreditRequests.map(cr => {
       const org = organizations.find(o => o.id === cr.organization_id);
       return {
+        id: cr.id,
         name: org?.name || 'Okänd organisation',
         status: cr.status,
+        credit_date: cr.credit_date,
+        reason: cr.reason,
       };
     });
   };
@@ -402,35 +527,61 @@ export const DealDetailsDialog = ({ contact, organizations, open, onOpenChange, 
             </CardHeader>
             <CardContent>
               {isEditing ? (
-                <div className="space-y-2">
-                  {organizations.map((org) => (
-                    <div key={org.id} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`org-${org.id}`}
-                        checked={editData.selectedOrganizations.includes(org.id)}
-                        onCheckedChange={(checked) => handleOrganizationChange(org.id, checked === true)}
-                      />
-                      <label htmlFor={`org-${org.id}`} className="text-sm cursor-pointer">
-                        {org.name}
-                      </label>
-                    </div>
-                  ))}
+                <div className="space-y-3">
+                  {organizations.map((org) => {
+                    const isSelected = editData.selectedOrganizations.includes(org.id);
+                    return (
+                      <div key={org.id} className="space-y-2">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`org-${org.id}`}
+                            checked={isSelected}
+                            onCheckedChange={(checked) => handleOrganizationChange(org.id, checked === true)}
+                          />
+                          <label htmlFor={`org-${org.id}`} className="text-sm cursor-pointer">
+                            {org.name}
+                          </label>
+                        </div>
+                        {isSelected && isAdmin && (
+                          <div className="ml-6 flex items-center gap-2 p-2 rounded-lg bg-muted/30">
+                            <Switch
+                              id={`sold-${org.id}`}
+                              checked={editData.soldToPartner[org.id] || false}
+                              onCheckedChange={(checked) => handleSoldToPartnerChange(org.id, checked)}
+                            />
+                            <Label htmlFor={`sold-${org.id}`} className="text-xs text-muted-foreground cursor-pointer">
+                              Sälj till partner (fakturera lead istället för säljkonsult)
+                            </Label>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               ) : (
-                contact.organizations && contact.organizations.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {contact.organizations.map((org) => (
-                      <span
-                        key={org.id}
-                        className="px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium"
-                      >
-                        {org.name}
-                      </span>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground text-sm">Inga bolag tilldelade</p>
-                )
+                <>
+                  {contact.organizations && contact.organizations.length > 0 ? (
+                    <div className="space-y-2">
+                      {contact.organizations.map((org) => {
+                        const co = contactOrgs.find(c => c.organization_id === org.id);
+                        return (
+                          <div key={org.id} className="flex items-center justify-between">
+                            <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium">
+                              {org.name}
+                            </span>
+                            {co?.sold_to_partner && (
+                              <span className="px-2 py-0.5 text-xs rounded-full bg-amber-500/10 text-amber-600">
+                                Såld till partner
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground text-sm">Inga bolag tilldelade</p>
+                  )}
+                </>
               )}
             </CardContent>
           </Card>
@@ -542,7 +693,7 @@ export const DealDetailsDialog = ({ contact, organizations, open, onOpenChange, 
             </Card>
           )}
 
-          {/* Credit Requests - Read only */}
+          {/* Credit Requests - Admin can edit */}
           {!isEditing && (
             <Card className="glass-card">
               <CardHeader className="pb-3">
@@ -553,14 +704,62 @@ export const DealDetailsDialog = ({ contact, organizations, open, onOpenChange, 
               </CardHeader>
               <CardContent>
                 {creditingOrgs.length > 0 ? (
-                  <div className="space-y-2">
-                    {creditingOrgs.map((credit, index) => (
+                  <div className="space-y-3">
+                    {creditingOrgs.map((credit) => (
                       <div
-                        key={index}
-                        className="flex items-center justify-between p-3 rounded-lg bg-muted/30"
+                        key={credit.id}
+                        className="p-3 rounded-lg bg-muted/30 space-y-2"
                       >
-                        <span className="font-medium">{credit.name}</span>
-                        <StatusBadge status={credit.status} />
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium">{credit.name}</span>
+                          {!isAdmin && <StatusBadge status={credit.status} />}
+                        </div>
+                        
+                        {credit.reason && (
+                          <p className="text-xs text-muted-foreground">Anledning: {credit.reason}</p>
+                        )}
+                        
+                        {isAdmin && (
+                          <div className="space-y-2 pt-2 border-t border-border/50">
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="space-y-1">
+                                <Label className="text-xs">Status</Label>
+                                <Select
+                                  value={creditEdits[credit.id]?.status || credit.status}
+                                  onValueChange={(v) => handleCreditStatusChange(credit.id, v)}
+                                >
+                                  <SelectTrigger className="h-8 text-xs">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="pending">Väntande</SelectItem>
+                                    <SelectItem value="approved">Godkänd</SelectItem>
+                                    <SelectItem value="denied">Nekad</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs">Kreditdatum</Label>
+                                <Input
+                                  type="date"
+                                  className="h-8 text-xs"
+                                  value={creditEdits[credit.id]?.credit_date || credit.credit_date || ''}
+                                  onChange={(e) => handleCreditDateChange(credit.id, e.target.value)}
+                                />
+                              </div>
+                            </div>
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              className="w-full h-7 text-xs"
+                              onClick={() => saveCreditChanges(credit.id)}
+                              disabled={loading}
+                            >
+                              <Check className="w-3 h-3 mr-1" />
+                              Spara ändringar
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

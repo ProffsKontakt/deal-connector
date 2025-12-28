@@ -49,6 +49,16 @@ const DEFAULT_COLUMNS: ColumnConfig[] = [
   { key: 'creditStatus', label: 'Kredit Status' },
 ];
 
+interface ContactOrg {
+  id: string;
+  name: string;
+  price_per_solar_deal: number | null;
+  price_per_battery_deal: number | null;
+  is_sales_consultant?: boolean;
+  sales_consultant_lead_type?: string | null;
+  sold_to_partner?: boolean;
+}
+
 interface Contact {
   id: string;
   email: string;
@@ -61,7 +71,7 @@ interface Contact {
   opener_id: string;
   region_id: string | null;
   opener?: { email: string; full_name: string | null };
-  organizations?: { id: string; name: string; price_per_solar_deal: number | null; price_per_battery_deal: number | null; is_sales_consultant?: boolean; sales_consultant_lead_type?: string | null }[];
+  organizations?: ContactOrg[];
   credit_requests?: { status: 'pending' | 'approved' | 'denied'; organization_id: string }[];
   region?: { id: string; name: string };
 }
@@ -190,7 +200,7 @@ const Deals = () => {
         .select(`
           *,
           opener:profiles!contacts_opener_id_fkey(email, full_name),
-          contact_organizations(organization:organizations(id, name, price_per_solar_deal, price_per_battery_deal, is_sales_consultant, sales_consultant_lead_type)),
+          contact_organizations(organization:organizations(id, name, price_per_solar_deal, price_per_battery_deal, is_sales_consultant, sales_consultant_lead_type), sold_to_partner),
           credit_requests(status, organization_id),
           region:regions(id, name)
         `)
@@ -205,7 +215,10 @@ const Deals = () => {
 
       const transformed = (data || []).map((c: any) => ({
         ...c,
-        organizations: c.contact_organizations?.map((co: any) => co.organization) || [],
+        organizations: c.contact_organizations?.map((co: any) => ({
+          ...co.organization,
+          sold_to_partner: co.sold_to_partner || false,
+        })) || [],
       }));
 
       setContacts(transformed);
@@ -373,8 +386,9 @@ const Deals = () => {
       const isSalesConsultantForLeadType = org.is_sales_consultant && 
         org.sales_consultant_lead_type === contact.interest;
       
-      // Skip if we're selling on this ourselves
-      if (isSalesConsultantForLeadType) return;
+      // If sold_to_partner is true, include in invoicing regardless of sales consultant status
+      // Otherwise skip if we're selling on this ourselves
+      if (isSalesConsultantForLeadType && !org.sold_to_partner) return;
       
       // Check if there's an approved credit for this org on this contact
       const hasApprovedCredit = contact.credit_requests?.some(
