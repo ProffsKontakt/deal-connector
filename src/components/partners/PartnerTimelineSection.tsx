@@ -29,7 +29,7 @@ interface ForecastData {
 }
 
 interface PartnerTimelineSectionProps {
-  selectedMonth?: string;
+  selectedMonth: string;
 }
 
 export function PartnerTimelineSection({ selectedMonth }: PartnerTimelineSectionProps) {
@@ -38,9 +38,12 @@ export function PartnerTimelineSection({ selectedMonth }: PartnerTimelineSection
   const [loading, setLoading] = useState(true);
   const [addEventOpen, setAddEventOpen] = useState(false);
 
+  // Calculate the next month from selected month for forecasts
+  const selectedDate = new Date(selectedMonth + '-01');
+
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [selectedMonth]);
 
   const fetchData = async () => {
     try {
@@ -73,10 +76,10 @@ export function PartnerTimelineSection({ selectedMonth }: PartnerTimelineSection
 
       const activeCount = activeOrgs?.length || 0;
       
-      // Get quota data for the next 3 months
+      // Get quota data starting from the month AFTER selected month
       const forecastData: ForecastData[] = [];
-      for (let i = 0; i < 3; i++) {
-        const month = addMonths(new Date(), i);
+      for (let i = 1; i <= 3; i++) {
+        const month = addMonths(selectedDate, i);
         const periodStart = format(startOfMonth(month), 'yyyy-MM-dd');
         
         // Fetch quotas for this month

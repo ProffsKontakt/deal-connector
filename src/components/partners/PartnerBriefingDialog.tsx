@@ -98,9 +98,9 @@ export function PartnerBriefingDialog({
 
       if (contactOrgs && contactOrgs.length > 0) {
         const contactIds = contactOrgs.map(co => co.contact_id);
-        const [year, month] = selectedMonth.split('-').map(Number);
-        const startDate = new Date(year, month - 2, 1);
-        const endDate = new Date(year, month - 1, 0);
+        const selectedDate = new Date(selectedMonth + '-01');
+        const startDate = startOfMonth(selectedDate);
+        const endDate = endOfMonth(selectedDate);
 
         const { data: contacts } = await supabase
           .from('contacts')
@@ -179,8 +179,8 @@ export function PartnerBriefingDialog({
   const batteryLeads = leads.filter(l => l.interest === 'battery').length;
   const sunBatteryLeads = leads.filter(l => l.interest === 'sun_battery').length;
 
-  const billingDate = new Date(selectedMonth + '-01');
-  const leadsMonthLabel = format(new Date(billingDate.getFullYear(), billingDate.getMonth() - 1, 1), 'MMMM yyyy', { locale: sv });
+  const selectedDate = new Date(selectedMonth + '-01');
+  const leadsMonthLabel = format(selectedDate, 'MMMM yyyy', { locale: sv });
 
   const handleCopyTable = () => {
     const headers = ['Datum', 'Namn', 'E-post', 'Telefon', 'Adress', 'Postnummer', 'Typ', 'Opener', 'Pris'];

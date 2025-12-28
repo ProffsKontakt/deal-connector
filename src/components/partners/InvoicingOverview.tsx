@@ -51,9 +51,9 @@ export function InvoicingOverview({ selectedMonth, onPartnerClick }: InvoicingOv
 
   const fetchInvoiceData = async () => {
     try {
-      const billingDate = new Date(selectedMonth + '-01');
-      const leadsStart = startOfMonth(subMonths(billingDate, 1));
-      const leadsEnd = endOfMonth(subMonths(billingDate, 1));
+      const selectedDate = new Date(selectedMonth + '-01');
+      const leadsStart = startOfMonth(selectedDate);
+      const leadsEnd = endOfMonth(selectedDate);
 
       // Fetch active organizations
       const { data: organizations } = await supabase
@@ -168,8 +168,8 @@ export function InvoicingOverview({ selectedMonth, onPartnerClick }: InvoicingOv
     }
   };
 
-  const billingDate = new Date(selectedMonth + '-01');
-  const leadsMonthLabel = format(subMonths(billingDate, 1), 'MMMM yyyy', { locale: sv });
+  const selectedDate = new Date(selectedMonth + '-01');
+  const leadsMonthLabel = format(selectedDate, 'MMMM yyyy', { locale: sv });
   const totalSum = invoices.reduce((sum, i) => sum + i.totalValue, 0);
   const totalLeadsCount = invoices.reduce((sum, i) => sum + i.totalLeads, 0);
   const creditedLeadsCount = detailedLeads.filter(l => l.status === 'Krediterad').length;
@@ -276,7 +276,7 @@ export function InvoicingOverview({ selectedMonth, onPartnerClick }: InvoicingOv
     XLSX.utils.book_append_sheet(wb, ws, 'Faktureringsunderlag');
 
     // Generate file name
-    const fileName = `faktureringsunderlag_${format(subMonths(billingDate, 1), 'yyyy-MM')}.xlsx`;
+    const fileName = `faktureringsunderlag_${format(selectedDate, 'yyyy-MM')}.xlsx`;
 
     // Write and download
     XLSX.writeFile(wb, fileName);
@@ -353,7 +353,7 @@ export function InvoicingOverview({ selectedMonth, onPartnerClick }: InvoicingOv
     XLSX.utils.book_append_sheet(wb, ws, partnerName.substring(0, 31)); // Sheet names max 31 chars
 
     // Generate file name
-    const fileName = `faktureringsunderlag_${partnerName.replace(/[^a-zA-Z0-9]/g, '_')}_${format(subMonths(billingDate, 1), 'yyyy-MM')}.xlsx`;
+    const fileName = `faktureringsunderlag_${partnerName.replace(/[^a-zA-Z0-9]/g, '_')}_${format(selectedDate, 'yyyy-MM')}.xlsx`;
 
     // Write and download
     XLSX.writeFile(wb, fileName);
