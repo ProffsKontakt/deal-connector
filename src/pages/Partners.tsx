@@ -96,9 +96,9 @@ const Partners = () => {
 
   const fetchPartnerStats = async () => {
     try {
-      const billingDate = new Date(selectedMonth + '-01');
-      const leadsStart = startOfMonth(subMonths(billingDate, 1));
-      const leadsEnd = endOfMonth(subMonths(billingDate, 1));
+      const selectedDate = new Date(selectedMonth + '-01');
+      const leadsStart = startOfMonth(selectedDate);
+      const leadsEnd = endOfMonth(selectedDate);
 
       // Get all organizations first
       const { data: allOrganizations } = await supabase
@@ -277,8 +277,8 @@ const Partners = () => {
     );
   }
 
-  const billingDate = new Date(selectedMonth + '-01');
-  const leadsMonthLabel = format(subMonths(billingDate, 1), 'MMMM yyyy', { locale: sv });
+  const selectedDate = new Date(selectedMonth + '-01');
+  const leadsMonthLabel = format(selectedDate, 'MMMM yyyy', { locale: sv });
 
   return (
     <div className="space-y-6 animate-fade-in">
