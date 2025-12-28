@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,8 +8,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { CreditCard, AlertTriangle, Send, ShieldX } from 'lucide-react';
-import { differenceInDays } from 'date-fns';
+import { CreditCard, AlertTriangle, Send, ShieldX, Clock } from 'lucide-react';
+import { differenceInDays, format } from 'date-fns';
+import { sv } from 'date-fns/locale';
 
 interface Contact {
   id: string;
@@ -20,6 +21,7 @@ interface Contact {
 
 interface OrganizationSettings {
   can_request_credits: boolean;
+  credit_deadline_days: number | null;
 }
 
 const Kreditera = () => {
@@ -33,6 +35,7 @@ const Kreditera = () => {
   const [showWarning, setShowWarning] = useState(false);
   const [pendingSubmit, setPendingSubmit] = useState(false);
   const [canRequestCredits, setCanRequestCredits] = useState<boolean | null>(null);
+  const [creditDeadlineDays, setCreditDeadlineDays] = useState<number>(14);
 
   useEffect(() => {
     if (profile?.organization_id) {
@@ -49,7 +52,7 @@ const Kreditera = () => {
     try {
       const { data, error } = await supabase
         .from('organizations')
-        .select('can_request_credits')
+        .select('can_request_credits, credit_deadline_days')
         .eq('id', profile.organization_id)
         .single();
 
@@ -59,6 +62,7 @@ const Kreditera = () => {
       }
 
       setCanRequestCredits(data?.can_request_credits ?? true);
+      setCreditDeadlineDays(data?.credit_deadline_days ?? 14);
     } catch (error) {
       console.error('Error:', error);
     }
@@ -91,6 +95,14 @@ const Kreditera = () => {
     }
   };
 
+  // Filter contacts to only show those within the credit deadline
+  const eligibleContacts = useMemo(() => {
+    return contacts.filter(contact => {
+      const daysSinceSent = differenceInDays(new Date(), new Date(contact.date_sent));
+      return daysSinceSent <= creditDeadlineDays;
+    });
+  }, [contacts, creditDeadlineDays]);
+
   const handleSubmit = async (force = false) => {
     if (!selectedContact || !reason.trim() || !profile?.organization_id) {
       toast({
@@ -105,6 +117,16 @@ const Kreditera = () => {
     if (!contact) return;
 
     const daysSinceSent = differenceInDays(new Date(), new Date(contact.date_sent));
+
+    // Partners cannot submit credits beyond the deadline (admins don't use this page)
+    if (daysSinceSent > creditDeadlineDays) {
+      toast({
+        title: 'Tidsfristen har passerat',
+        description: `Du kan endast kreditera leads inom ${creditDeadlineDays} dagar från mottagning`,
+        variant: 'destructive',
+      });
+      return;
+    }
 
     if (daysSinceSent > 60 && !force) {
       setShowWarning(true);
@@ -209,29 +231,40 @@ const Kreditera = () => {
             <div>
               <CardTitle>Ny kreditförfrågan</CardTitle>
               <CardDescription>
-                Välj en deal och ange anledning för krediteringen. Begäran måste göras inom 14 dagar.
+                Välj en deal och ange anledning för krediteringen. Begäran måste göras inom {creditDeadlineDays} dagar.
               </CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Deadline info banner */}
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+            <Clock className="w-5 h-5 text-amber-500 shrink-0" />
+            <p className="text-sm text-amber-700 dark:text-amber-400">
+              Du har <span className="font-semibold">{creditDeadlineDays} dagar</span> från att ett lead levererades för att kunna begära kreditering.
+            </p>
+          </div>
+
           <div className="space-y-2">
-            <Label htmlFor="contact">Välj deal</Label>
+            <Label htmlFor="contact">Välj deal (inom tidsfrist)</Label>
             <Select value={selectedContact} onValueChange={setSelectedContact}>
               <SelectTrigger id="contact">
                 <SelectValue placeholder="Välj en deal att kreditera" />
               </SelectTrigger>
               <SelectContent>
-                {contacts.length === 0 ? (
+                {eligibleContacts.length === 0 ? (
                   <SelectItem value="none" disabled>
-                    Inga deals tillgängliga
+                    Inga deals tillgängliga inom tidsfristen
                   </SelectItem>
                 ) : (
-                  contacts.map((contact) => (
-                    <SelectItem key={contact.id} value={contact.id}>
-                      {contact.email} ({contact.date_sent})
-                    </SelectItem>
-                  ))
+                  eligibleContacts.map((contact) => {
+                    const daysLeft = creditDeadlineDays - differenceInDays(new Date(), new Date(contact.date_sent));
+                    return (
+                      <SelectItem key={contact.id} value={contact.id}>
+                        {contact.email} ({format(new Date(contact.date_sent), 'dd MMM yyyy', { locale: sv })}) – {daysLeft} dagar kvar
+                      </SelectItem>
+                    );
+                  })
                 )}
               </SelectContent>
             </Select>

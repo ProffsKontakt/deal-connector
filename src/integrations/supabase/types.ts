@@ -689,6 +689,7 @@ export type Database = {
           contact_person_name: string | null
           contact_phone: string | null
           created_at: string
+          credit_deadline_days: number | null
           default_customer_price: number | null
           eur_to_sek_rate: number | null
           id: string
@@ -712,6 +713,7 @@ export type Database = {
           contact_person_name?: string | null
           contact_phone?: string | null
           created_at?: string
+          credit_deadline_days?: number | null
           default_customer_price?: number | null
           eur_to_sek_rate?: number | null
           id?: string
@@ -735,6 +737,7 @@ export type Database = {
           contact_person_name?: string | null
           contact_phone?: string | null
           created_at?: string
+          credit_deadline_days?: number | null
           default_customer_price?: number | null
           eur_to_sek_rate?: number | null
           id?: string

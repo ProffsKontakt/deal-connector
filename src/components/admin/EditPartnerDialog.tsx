@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { Plus, Trash2, Building2, Settings2, DollarSign, Percent, Calculator, Package, MapPin, CreditCard } from 'lucide-react';
+import { Plus, Trash2, Building2, Settings2, DollarSign, Percent, Calculator, Package, MapPin, CreditCard, Clock } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 
 interface CostSegment {
@@ -51,6 +51,7 @@ interface Partner {
   allow_manual_calculation?: boolean;
   sales_consultant_lead_type?: string | null;
   can_request_credits?: boolean;
+  credit_deadline_days?: number | null;
 }
 
 interface EditPartnerDialogProps {
@@ -81,6 +82,7 @@ export const EditPartnerDialog = ({ partner, open, onOpenChange, onUpdated }: Ed
     allow_manual_calculation: false,
     sales_consultant_lead_type: '' as string,
     can_request_credits: true,
+    credit_deadline_days: '14',
     // For "Allt över" calculation preview
     preview_total_price: '78000',
     preview_property_owners: '1',
@@ -119,6 +121,7 @@ export const EditPartnerDialog = ({ partner, open, onOpenChange, onUpdated }: Ed
         allow_manual_calculation: partner.allow_manual_calculation || false,
         sales_consultant_lead_type: partner.sales_consultant_lead_type || '',
         can_request_credits: partner.can_request_credits ?? true,
+        credit_deadline_days: (partner.credit_deadline_days ?? 14).toString(),
         preview_total_price: (partner.default_customer_price ?? 78000).toString(),
         preview_property_owners: '1',
         preview_product_id: '',
@@ -380,6 +383,8 @@ export const EditPartnerDialog = ({ partner, open, onOpenChange, onUpdated }: Ed
           default_customer_price: parseFloat(formData.default_customer_price) || 78000,
           allow_manual_calculation: formData.allow_manual_calculation,
           sales_consultant_lead_type: formData.sales_consultant_lead_type || null,
+          can_request_credits: formData.can_request_credits,
+          credit_deadline_days: formData.can_request_credits ? (parseInt(formData.credit_deadline_days) || 14) : null,
         } as any)
         .eq('id', partner.id);
 
@@ -558,6 +563,29 @@ export const EditPartnerDialog = ({ partner, open, onOpenChange, onUpdated }: Ed
               onCheckedChange={(checked) => setFormData(prev => ({ ...prev, can_request_credits: checked }))}
             />
           </div>
+
+          {/* Credit Deadline Days - only show when can_request_credits is enabled */}
+          {formData.can_request_credits && (
+            <div className="pl-4 border-l-2 border-primary/30 space-y-2 animate-fade-in">
+              <Label htmlFor="credit_deadline_days" className="flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                Dagar tidsfrist
+              </Label>
+              <Input
+                id="credit_deadline_days"
+                type="number"
+                min="1"
+                max="90"
+                value={formData.credit_deadline_days}
+                onChange={(e) => setFormData(prev => ({ ...prev, credit_deadline_days: e.target.value }))}
+                placeholder="14"
+                className="w-32"
+              />
+              <p className="text-xs text-muted-foreground">
+                Antal dagar som partnern har på sig att returnera ett lead efter mottagning
+              </p>
+            </div>
+          )}
 
           <Separator />
 
