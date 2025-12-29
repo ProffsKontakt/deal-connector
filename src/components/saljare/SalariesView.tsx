@@ -36,6 +36,10 @@ interface OpenerSalaryData {
   commission: number;
   commissionPerDeal: number;
   leads: LeadDetail[];
+  employerFeePercent: number;
+  vacationPayPercent: number;
+  employerCost: number;
+  totalWithEmployerCost: number;
 }
 
 interface CloserSalaryData {
@@ -46,11 +50,10 @@ interface CloserSalaryData {
   commission: number;
   baseCommission: number;
   sales: SaleDetail[];
-}
-
-interface EmployerCostSettings {
-  percentage: number;
-  name: string;
+  employerFeePercent: number;
+  vacationPayPercent: number;
+  employerCost: number;
+  totalWithEmployerCost: number;
 }
 
 export const SalariesView = () => {
@@ -58,7 +61,6 @@ export const SalariesView = () => {
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [openerSalaries, setOpenerSalaries] = useState<OpenerSalaryData[]>([]);
   const [closerSalaries, setCloserSalaries] = useState<CloserSalaryData[]>([]);
-  const [employerCost, setEmployerCost] = useState<EmployerCostSettings | null>(null);
   const [selectedOpener, setSelectedOpener] = useState<OpenerSalaryData | null>(null);
   const [selectedCloser, setSelectedCloser] = useState<CloserSalaryData | null>(null);
 
@@ -75,19 +77,10 @@ export const SalariesView = () => {
       const startDate = startOfMonth(selectedMonth);
       const endDate = endOfMonth(selectedMonth);
 
-      // Fetch employer cost settings
-      const { data: costSettings } = await supabase
-        .from('employer_cost_settings')
-        .select('percentage, name')
-        .eq('is_active', true)
-        .single();
-      
-      setEmployerCost(costSettings);
-
-      // Fetch all profiles
+      // Fetch all profiles with individual employer cost settings
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, email, full_name, role, opener_commission_per_deal, closer_base_commission')
+        .select('id, email, full_name, role, opener_commission_per_deal, closer_base_commission, employer_fee_percent, vacation_pay_percent')
         .in('role', ['opener', 'closer', 'teamleader']);
 
       // Fetch contacts for the month (for opener commission)
@@ -157,6 +150,13 @@ export const SalariesView = () => {
           commission: commissionPerDeal
         }));
 
+        // Calculate individual employer costs
+        const employerFeePercent = opener.employer_fee_percent ?? 31.42;
+        const vacationPayPercent = opener.vacation_pay_percent ?? 12;
+        const totalMultiplier = (employerFeePercent + vacationPayPercent) / 100;
+        const employerCost = totalCommission * totalMultiplier;
+        const totalWithEmployerCost = totalCommission + employerCost;
+
         return {
           id: opener.id,
           name: opener.full_name || opener.email,
@@ -164,7 +164,11 @@ export const SalariesView = () => {
           qualifiedLeads: qualifiedLeads.length,
           commission: totalCommission,
           commissionPerDeal,
-          leads
+          leads,
+          employerFeePercent,
+          vacationPayPercent,
+          employerCost,
+          totalWithEmployerCost
         };
       });
 
@@ -183,6 +187,13 @@ export const SalariesView = () => {
           invoiceableAmount: Number(sale.invoiceable_amount) || 0
         }));
 
+        // Calculate individual employer costs
+        const employerFeePercent = closer.employer_fee_percent ?? 31.42;
+        const vacationPayPercent = closer.vacation_pay_percent ?? 12;
+        const totalMultiplier = (employerFeePercent + vacationPayPercent) / 100;
+        const employerCost = totalCommission * totalMultiplier;
+        const totalWithEmployerCost = totalCommission + employerCost;
+
         return {
           id: closer.id,
           name: closer.full_name || closer.email,
@@ -190,7 +201,11 @@ export const SalariesView = () => {
           closedDeals: closerSales.length,
           commission: totalCommission,
           baseCommission: closer.closer_base_commission || 8000,
-          sales: salesDetails
+          sales: salesDetails,
+          employerFeePercent,
+          vacationPayPercent,
+          employerCost,
+          totalWithEmployerCost
         };
       });
 
@@ -217,8 +232,19 @@ export const SalariesView = () => {
     [closerSalaries]
   );
 
+  // Calculate total employer costs from individual user rates
+  const totalOpenerEmployerCost = useMemo(() => 
+    openerSalaries.reduce((sum, s) => sum + s.employerCost, 0), 
+    [openerSalaries]
+  );
+
+  const totalCloserEmployerCost = useMemo(() => 
+    closerSalaries.reduce((sum, s) => sum + s.employerCost, 0), 
+    [closerSalaries]
+  );
+
   const totalCommission = totalOpenerCommission + totalCloserCommission;
-  const employerCostAmount = employerCost ? (totalCommission * employerCost.percentage / 100) : 0;
+  const employerCostAmount = totalOpenerEmployerCost + totalCloserEmployerCost;
   const totalWithEmployerCost = totalCommission + employerCostAmount;
 
   return (
@@ -278,7 +304,7 @@ export const SalariesView = () => {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">
-                  Arbetsgivaravgift {employerCost ? `(${employerCost.percentage}%)` : ''}
+                  Arbetsgivaravgift + semester
                 </p>
                 <p className="text-xl font-bold">{formatCurrency(employerCostAmount)}</p>
               </div>
@@ -336,11 +362,7 @@ export const SalariesView = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {closerSalaries.map((closer) => {
-                        const withEmployerCost = employerCost 
-                          ? closer.commission * (1 + employerCost.percentage / 100) 
-                          : closer.commission;
-                        return (
+                      {closerSalaries.map((closer) => (
                           <TableRow 
                             key={closer.id} 
                             className="hover:bg-muted/30 cursor-pointer"
@@ -359,11 +381,10 @@ export const SalariesView = () => {
                               {formatCurrency(closer.commission)}
                             </TableCell>
                             <TableCell className="text-right font-semibold text-muted-foreground">
-                              {formatCurrency(withEmployerCost)}
+                              {formatCurrency(closer.totalWithEmployerCost)}
                             </TableCell>
                           </TableRow>
-                        );
-                      })}
+                      ))}
                     </TableBody>
                   </Table>
                 </div>
@@ -402,11 +423,7 @@ export const SalariesView = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {openerSalaries.map((opener) => {
-                        const withEmployerCost = employerCost 
-                          ? opener.commission * (1 + employerCost.percentage / 100) 
-                          : opener.commission;
-                        return (
+                      {openerSalaries.map((opener) => (
                           <TableRow 
                             key={opener.id} 
                             className="hover:bg-muted/30 cursor-pointer"
@@ -428,11 +445,10 @@ export const SalariesView = () => {
                               {formatCurrency(opener.commission)}
                             </TableCell>
                             <TableCell className="text-right font-semibold text-muted-foreground">
-                              {formatCurrency(withEmployerCost)}
+                              {formatCurrency(opener.totalWithEmployerCost)}
                             </TableCell>
                           </TableRow>
-                        );
-                      })}
+                      ))}
                     </TableBody>
                   </Table>
                 </div>

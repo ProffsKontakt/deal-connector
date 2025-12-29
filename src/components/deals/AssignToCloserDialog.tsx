@@ -128,16 +128,28 @@ export const AssignToCloserDialog = ({
 
     setLoading(true);
     try {
-      // For each selected contact, create a sales record
+      // Get the selected closer's organization assignments
+      const selectedCloser = closers.find(c => c.id === selectedCloserId);
+      const closerOrgIds = selectedCloser?.regions.map(r => r.organizationId) || [];
+      
+      // For each selected contact, create a sales record ONLY for organizations the closer is assigned to
       const salesRecords = selectedContacts.flatMap(contact => {
-        // Create a sale for each organization the contact is linked to
-        return contact.organizations.map(org => ({
+        // Filter to only organizations the closer is assigned to
+        const relevantOrgs = contact.organizations.filter(org => closerOrgIds.includes(org.id));
+        
+        return relevantOrgs.map(org => ({
           contact_id: contact.id,
           closer_id: selectedCloserId,
           organization_id: org.id,
           pipeline_status: 'new',
         }));
       });
+
+      if (salesRecords.length === 0) {
+        toast.info('Closern är inte tilldelad till någon av de valda organisationerna');
+        onOpenChange(false);
+        return;
+      }
 
       // Check for existing sales to avoid duplicates
       const { data: existingSales } = await supabase
@@ -166,7 +178,6 @@ export const AssignToCloserDialog = ({
 
       if (error) throw error;
 
-      const selectedCloser = closers.find(c => c.id === selectedCloserId);
       toast.success(
         `${newSalesRecords.length} leads tilldelade till ${selectedCloser?.full_name || selectedCloser?.email}`
       );
@@ -271,16 +282,30 @@ export const AssignToCloserDialog = ({
                 </Select>
               </div>
 
-              {selectedCloserId && (
-                <div className="p-3 rounded-lg border bg-primary/5">
-                  <p className="text-sm font-medium text-primary">
-                    Vald closer: {getCloserDisplayName(closers.find(c => c.id === selectedCloserId)!)}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {selectedContacts.length} leads × {selectedOrgIds.length} organisationer = {selectedContacts.length * selectedOrgIds.length} tilldelningar
-                  </p>
-                </div>
-              )}
+              {selectedCloserId && (() => {
+                const selectedCloser = closers.find(c => c.id === selectedCloserId);
+                const closerOrgIds = selectedCloser?.regions.map(r => r.organizationId) || [];
+                const relevantOrgsCount = selectedOrgIds.filter(id => closerOrgIds.includes(id)).length;
+                const actualAssignments = selectedContacts.reduce((sum, contact) => {
+                  return sum + contact.organizations.filter(org => closerOrgIds.includes(org.id)).length;
+                }, 0);
+                
+                return (
+                  <div className="p-3 rounded-lg border bg-primary/5">
+                    <p className="text-sm font-medium text-primary">
+                      Vald closer: {getCloserDisplayName(selectedCloser!)}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {selectedContacts.length} leads × {relevantOrgsCount} matchande organisationer = {actualAssignments} tilldelningar
+                    </p>
+                    {relevantOrgsCount < selectedOrgIds.length && (
+                      <p className="text-xs text-amber-600 mt-1">
+                        OBS: Closern är endast tilldelad till {relevantOrgsCount} av {selectedOrgIds.length} organisationer
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
 
               {relevantClosers.length === 0 && closers.length > 0 && (
                 <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
