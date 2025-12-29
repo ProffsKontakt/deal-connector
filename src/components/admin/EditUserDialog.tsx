@@ -24,6 +24,11 @@ interface Profile {
   user_type?: string | null;
 }
 
+interface Organization {
+  id: string;
+  name: string;
+}
+
 interface EditUserDialogProps {
   user: Profile | null;
   open: boolean;
@@ -33,9 +38,11 @@ interface EditUserDialogProps {
 
 export const EditUserDialog = ({ user, open, onOpenChange, onUpdated }: EditUserDialogProps) => {
   const [loading, setLoading] = useState(false);
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [formData, setFormData] = useState({
     full_name: '',
     role: 'opener' as UserRole,
+    organization_id: '' as string,
     personal_number: '',
     bank_name: '',
     account_number: '',
@@ -46,10 +53,17 @@ export const EditUserDialog = ({ user, open, onOpenChange, onUpdated }: EditUser
   const isInternalRole = (role: UserRole) => ['admin', 'teamleader', 'opener', 'closer'].includes(role);
 
   useEffect(() => {
+    if (open) {
+      fetchOrganizations();
+    }
+  }, [open]);
+
+  useEffect(() => {
     if (user) {
       setFormData({
         full_name: user.full_name || '',
         role: user.role,
+        organization_id: user.organization_id || '',
         personal_number: user.personal_number || '',
         bank_name: user.bank_name || '',
         account_number: user.account_number || '',
@@ -58,6 +72,15 @@ export const EditUserDialog = ({ user, open, onOpenChange, onUpdated }: EditUser
       });
     }
   }, [user]);
+
+  const fetchOrganizations = async () => {
+    const { data } = await supabase
+      .from('organizations')
+      .select('id, name')
+      .eq('status', 'active')
+      .order('name');
+    if (data) setOrganizations(data);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,6 +94,11 @@ export const EditUserDialog = ({ user, open, onOpenChange, onUpdated }: EditUser
         user_type: isInternalRole(formData.role) ? 'internal' : 'external',
       };
 
+      // For partner/organization role, set organization_id
+      if (formData.role === 'organization') {
+        updateData.organization_id = formData.organization_id || null;
+      }
+
       // Only add internal fields for internal users
       if (isInternalRole(formData.role)) {
         updateData.personal_number = formData.personal_number.trim() || null;
@@ -78,6 +106,7 @@ export const EditUserDialog = ({ user, open, onOpenChange, onUpdated }: EditUser
         updateData.account_number = formData.account_number.trim() || null;
         updateData.employer_fee_percent = formData.employer_fee_percent;
         updateData.vacation_pay_percent = formData.vacation_pay_percent;
+        updateData.organization_id = null; // Clear org for internal users
       }
 
       const { error } = await supabase
@@ -143,6 +172,25 @@ export const EditUserDialog = ({ user, open, onOpenChange, onUpdated }: EditUser
               </SelectContent>
             </Select>
           </div>
+
+          {formData.role === 'organization' && (
+            <div className="space-y-2">
+              <Label htmlFor="edit-organization">Kopplat bolag</Label>
+              <Select
+                value={formData.organization_id}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, organization_id: value }))}
+              >
+                <SelectTrigger id="edit-organization">
+                  <SelectValue placeholder="Välj bolag..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {organizations.map(org => (
+                    <SelectItem key={org.id} value={org.id}>{org.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {isInternalRole(formData.role) && (
             <>

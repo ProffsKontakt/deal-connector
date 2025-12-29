@@ -48,10 +48,19 @@ export const AddUserDialog = ({ onCreated, defaultUserType = 'internal' }: AddUs
 
     setLoading(true);
     try {
-      // Use admin API to create user without logging in
-      // We call an edge function or use signUp with a workaround
+      // Save current admin session BEFORE creating new user
       const { data: { session: currentSession } } = await supabase.auth.getSession();
       
+      if (!currentSession) {
+        toast.error('Du måste vara inloggad som admin');
+        setLoading(false);
+        return;
+      }
+
+      // Store the admin tokens
+      const adminAccessToken = currentSession.access_token;
+      const adminRefreshToken = currentSession.refresh_token;
+
       // Create user via Supabase Auth
       const { data, error } = await supabase.auth.signUp({
         email: formData.email.trim(),
@@ -95,13 +104,11 @@ export const AddUserDialog = ({ onCreated, defaultUserType = 'internal' }: AddUs
           .eq('user_id', data.user.id);
       }
 
-      // Restore the admin's session if it was replaced
-      if (currentSession) {
-        await supabase.auth.setSession({
-          access_token: currentSession.access_token,
-          refresh_token: currentSession.refresh_token,
-        });
-      }
+      // IMMEDIATELY restore the admin's session - this is critical
+      await supabase.auth.setSession({
+        access_token: adminAccessToken,
+        refresh_token: adminRefreshToken,
+      });
 
       toast.success('Användare skapad');
       setFormData({ 
