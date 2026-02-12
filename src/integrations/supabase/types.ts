@@ -128,6 +128,151 @@ export type Database = {
           },
         ]
       }
+      lead_assignment_log: {
+        Row: {
+          id: string
+          organization_id: string
+          routing_rule_id: string | null
+          owner_user_name: string
+          owner_user_id: number | null
+          lead_type: string
+          lead_type_for_routing: string
+          lead_reference: Json | null
+          assigned_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          routing_rule_id?: string | null
+          owner_user_name: string
+          owner_user_id?: number | null
+          lead_type: string
+          lead_type_for_routing: string
+          lead_reference?: Json | null
+          assigned_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          routing_rule_id?: string | null
+          owner_user_name?: string
+          owner_user_id?: number | null
+          lead_type?: string
+          lead_type_for_routing?: string
+          lead_reference?: Json | null
+          assigned_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_assignment_log_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_assignment_log_routing_rule_id_fkey"
+            columns: ["routing_rule_id"]
+            isOneToOne: false
+            referencedRelation: "lead_routing_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_routing_rules: {
+        Row: {
+          id: string
+          organization_id: string
+          pipeline_name: string | null
+          pipeline_id: number | null
+          stage_name: string | null
+          stage_id: number | null
+          owner_user_name: string
+          owner_user_id: number | null
+          active: boolean
+          lead_types: string | null
+          priority: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          pipeline_name?: string | null
+          pipeline_id?: number | null
+          stage_name?: string | null
+          stage_id?: number | null
+          owner_user_name: string
+          owner_user_id?: number | null
+          active?: boolean
+          lead_types?: string | null
+          priority?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          pipeline_name?: string | null
+          pipeline_id?: number | null
+          stage_name?: string | null
+          stage_id?: number | null
+          owner_user_name?: string
+          owner_user_id?: number | null
+          active?: boolean
+          lead_types?: string | null
+          priority?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_routing_rules_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_routing_state: {
+        Row: {
+          id: string
+          organization_id: string
+          owner_user_name: string
+          total_assigned: number
+          last_assigned_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          owner_user_name: string
+          total_assigned?: number
+          last_assigned_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          owner_user_name?: string
+          total_assigned?: number
+          last_assigned_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_routing_state_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contact_organizations: {
         Row: {
           contact_id: string
@@ -698,6 +843,7 @@ export type Database = {
           credit_deadline_days: number | null
           default_customer_price: number | null
           eur_to_sek_rate: number | null
+          external_partner_id: string | null
           id: string
           is_sales_consultant: boolean
           lf_finans_percent: number | null
@@ -722,6 +868,7 @@ export type Database = {
           credit_deadline_days?: number | null
           default_customer_price?: number | null
           eur_to_sek_rate?: number | null
+          external_partner_id?: string | null
           id?: string
           is_sales_consultant?: boolean
           lf_finans_percent?: number | null
@@ -746,6 +893,7 @@ export type Database = {
           credit_deadline_days?: number | null
           default_customer_price?: number | null
           eur_to_sek_rate?: number | null
+          external_partner_id?: string | null
           id?: string
           is_sales_consultant?: boolean
           lf_finans_percent?: number | null
@@ -1041,6 +1189,21 @@ export type Database = {
       }
     }
     Views: {
+      lead_routing_overview: {
+        Row: {
+          organization_name: string | null
+          owner_user_name: string | null
+          priority: number | null
+          lead_types: string | null
+          active: boolean | null
+          pipeline_name: string | null
+          stage_name: string | null
+          total_assigned: number | null
+          last_assigned_at: string | null
+          organization_id: string | null
+        }
+        Relationships: []
+      }
       geography_columns: {
         Row: {
           coord_dimension: number | null
@@ -1343,6 +1506,14 @@ export type Database = {
         Returns: boolean
       }
       geomfromewkt: { Args: { "": string }; Returns: unknown }
+      match_lead_to_salesperson: {
+        Args: {
+          p_organization_id: string
+          p_lead_type: string
+          p_lead_reference?: Json | null
+        }
+        Returns: Json
+      }
       get_region_by_postal_code: { Args: { postal: string }; Returns: string }
       get_user_organization: { Args: { _user_id: string }; Returns: string }
       get_user_role: {
